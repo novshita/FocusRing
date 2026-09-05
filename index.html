@@ -6,45 +6,55 @@
 <title>FocusRing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="bg-layer" id="bgLayer"></div>
+  <div class="bg-overlay"></div>
+
   <main class="app">
-    <div class="card" id="card">
-      <p class="eyebrow" id="modeLabel">Working</p>
+    <p class="greeting" id="greeting">let's get to work!</p>
 
-      <div class="dial-wrap">
-        <svg class="dial" viewBox="0 0 260 260">
-          <circle class="dial-track" cx="130" cy="130" r="112"></circle>
-          <circle class="dial-progress" id="progressRing" cx="130" cy="130" r="112"></circle>
-        </svg>
-        <div class="dial-center">
-          <div class="time" id="timeDisplay">25:00</div>
-          <div class="session-word" id="sessionWord">Session 1</div>
-          <div class="edit-row" id="editRow">
-            <label>Work
-              <input id="workInput" type="number" min="1" max="90" value="25" aria-label="Work minutes">
-            </label>
-            <label>Break
-              <input id="breakInput" type="number" min="1" max="30" value="5" aria-label="Break minutes">
-            </label>
-            <label>Long
-              <input id="longInput" type="number" min="1" max="60" value="10" aria-label="Long break minutes">
-            </label>
-          </div>
-        </div>
-      </div>
+    <nav class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="work">pomodoro</button>
+      <button class="mode-tab" data-mode="break">short break</button>
+      <button class="mode-tab" data-mode="long">long break</button>
+    </nav>
 
-      <div class="controls">
-        <button id="startPauseBtn">Start</button>
-        <button id="stopBtn">Stop</button>
-        <button id="resetBtn">Reset</button>
-      </div>
+    <div class="timer-area">
+      <svg class="progress-ring" viewBox="0 0 320 320" id="progressRingSvg">
+        <circle class="ring-track" cx="160" cy="160" r="148"></circle>
+        <circle class="ring-progress" id="progressRing" cx="160" cy="160" r="148"></circle>
+      </svg>
+      <div class="timer-display" id="timeDisplay">30:00</div>
+    </div>
 
-      <div class="seeds" id="seeds" aria-hidden="true"></div>
+    <div class="controls">
+      <button id="startPauseBtn" class="btn-primary">Start</button>
+      <button id="stopBtn" class="btn-ghost">Stop</button>
+      <button id="resetBtn" class="btn-ghost">Reset</button>
+    </div>
+
+    <div class="seeds" id="seeds" aria-hidden="true"></div>
+
+    <div class="edit-row" id="editRow">
+      <label>Work
+        <input id="workInput" type="number" min="1" max="90" value="30" aria-label="Work minutes">
+      </label>
+      <label>Break
+        <input id="breakInput" type="number" min="1" max="30" value="5" aria-label="Break minutes">
+      </label>
+      <label>Long
+        <input id="longInput" type="number" min="1" max="60" value="10" aria-label="Long break minutes">
+      </label>
     </div>
   </main>
+
+  <div class="theme-bar" id="themeBar">
+    <span class="theme-label">theme</span>
+    <div class="theme-pills" id="themePills"></div>
+  </div>
 
   <script src="script.js"></script>
 </body>

@@ -1,7 +1,6 @@
 (function(){
-  const timeDisplay = document.getElementById('timeDisplay');
-  const modeLabel = document.getElementById('modeLabel');
-  const sessionWord = document.getElementById('sessionWord');
+  const greeting = document.getElementById('greeting');
+  const modeTabs = document.getElementById('modeTabs');
   const startPauseBtn = document.getElementById('startPauseBtn');
   const stopBtn = document.getElementById('stopBtn');
   const resetBtn = document.getElementById('resetBtn');
@@ -11,27 +10,95 @@
   const longInput = document.getElementById('longInput');
   const progressRing = document.getElementById('progressRing');
   const seedsWrap = document.getElementById('seeds');
+  const bgLayer = document.getElementById('bgLayer');
+  const themePills = document.getElementById('themePills');
+  const timeDisplay = document.getElementById('timeDisplay');
 
-  const RADIUS = 112;
+  const RADIUS = 148;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
   progressRing.style.strokeDasharray = CIRCUMFERENCE;
 
   const MODE = { WORK: 'work', BREAK: 'break', LONG: 'long' };
-  const THEME = {
-    [MODE.WORK]: { accent: '--tomato', dark: '--tomato-dark', label: 'Working' },
-    [MODE.BREAK]: { accent: '--sage', dark: '--sage-dark', label: 'Short Break' },
-    [MODE.LONG]: { accent: '--amber', dark: '--amber-dark', label: 'Long Break' }
+
+  const GREETINGS = {
+    [MODE.WORK]: "let's get to work!",
+    [MODE.BREAK]: 'take a short break',
+    [MODE.LONG]: 'time for a long rest'
   };
+
+  const THEMES = [
+    {
+      id: 'sage-green',
+      name: 'sage green',
+      type: 'gradient',
+      bg: 'linear-gradient(135deg, #4a7c59 0%, #6b9e7a 40%, #8fbc8f 100%)',
+      overlay: 'rgba(0,0,0,0.15)'
+    },
+    {
+      id: 'cottage',
+      name: 'cottage',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.3)'
+    },
+    {
+      id: 'lofi-cafe',
+      name: 'lofi cafe',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.35)'
+    },
+    {
+      id: 'anime-landscape',
+      name: 'anime sky',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.25)'
+    },
+    {
+      id: 'ocean-sunset',
+      name: 'ocean sunset',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.3)'
+    },
+    {
+      id: 'mountain-dawn',
+      name: 'mountain dawn',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.3)'
+    },
+    {
+      id: 'rainy-window',
+      name: 'rainy window',
+      type: 'photo',
+      bg: 'url("https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=1920&q=80") center/cover',
+      overlay: 'rgba(0,0,0,0.35)'
+    },
+    {
+      id: 'lavender-dream',
+      name: 'lavender dream',
+      type: 'gradient',
+      bg: 'linear-gradient(135deg, #c3aed6 0%, #e8d5e0 40%, #f5e6cc 100%)',
+      overlay: 'rgba(0,0,0,0.08)',
+      darkText: true
+    }
+  ];
 
   let mode = MODE.WORK;
   let totalSeconds = getMinutes('work') * 60;
   let remaining = totalSeconds;
   let running = false;
   let timerId = null;
-  let completedWork = 0; // completed work sessions in current cycle of 4
-  let cycleIndex = 0;    // 0..3 to know when the 4th break becomes long
+  let completedWork = 0;
+  let cycleIndex = 0;
+  let currentTheme = 0;
+  let prevTimeStr = '30:00';
 
   buildSeeds();
+  buildThemePills();
+  applyTheme(0);
   renderAll();
 
   function getMinutes(which){
@@ -46,12 +113,61 @@
     return getMinutes('long') * 60;
   }
 
-  function applyTheme(m){
-    const t = THEME[m];
+  function applyTheme(idx){
+    currentTheme = idx;
+    const t = THEMES[idx];
+    bgLayer.style.background = t.bg;
+    document.querySelector('.bg-overlay').style.background = t.overlay;
+
     const root = document.documentElement.style;
-    root.setProperty('--accent', `var(${t.accent})`);
-    root.setProperty('--accent-dark', `var(${t.dark})`);
-    modeLabel.textContent = t.label;
+    if(t.darkText){
+      root.setProperty('--text', '#3b312a');
+      root.setProperty('--text-soft', 'rgba(59,49,42,0.6)');
+      root.setProperty('--accent', '#3b312a');
+      root.setProperty('--accent-hover', 'rgba(59,49,42,0.8)');
+      root.setProperty('--glass', 'rgba(255,255,255,0.35)');
+      root.setProperty('--glass-border', 'rgba(255,255,255,0.5)');
+      root.setProperty('--glass-strong', 'rgba(255,255,255,0.5)');
+      root.setProperty('--digit-bg', 'rgba(255,255,255,0.4)');
+      root.setProperty('--digit-border', 'rgba(255,255,255,0.6)');
+      root.setProperty('--ring-track', 'rgba(59,49,42,0.2)');
+      root.setProperty('--ring-progress', 'rgba(59,49,42,0.75)');
+      root.setProperty('--seed-fill', 'rgba(59,49,42,0.7)');
+      root.setProperty('--seed-border', 'rgba(59,49,42,0.3)');
+      root.setProperty('--focus-ring', '#3b312a');
+      document.querySelector('.btn-primary').style.color = '#faf7f2';
+    } else {
+      root.setProperty('--text', '#ffffff');
+      root.setProperty('--text-soft', 'rgba(255,255,255,0.7)');
+      root.setProperty('--accent', '#ffffff');
+      root.setProperty('--accent-hover', 'rgba(255,255,255,0.85)');
+      root.setProperty('--glass', 'rgba(255,255,255,0.15)');
+      root.setProperty('--glass-border', 'rgba(255,255,255,0.25)');
+      root.setProperty('--glass-strong', 'rgba(255,255,255,0.22)');
+      root.setProperty('--digit-bg', 'rgba(255,255,255,0.18)');
+      root.setProperty('--digit-border', 'rgba(255,255,255,0.3)');
+      root.setProperty('--ring-track', 'rgba(255,255,255,0.25)');
+      root.setProperty('--ring-progress', 'rgba(255,255,255,0.9)');
+      root.setProperty('--seed-fill', 'rgba(255,255,255,0.8)');
+      root.setProperty('--seed-border', 'rgba(255,255,255,0.4)');
+      root.setProperty('--focus-ring', '#ffffff');
+      document.querySelector('.btn-primary').style.color = '#2c2a24';
+    }
+
+    themePills.querySelectorAll('.theme-pill').forEach((p, i) => {
+      p.classList.toggle('active', i === idx);
+    });
+  }
+
+  function buildThemePills(){
+    themePills.innerHTML = '';
+    THEMES.forEach((t, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'theme-pill' + (i === 0 ? ' active' : '');
+      btn.textContent = t.name;
+      btn.addEventListener('click', () => applyTheme(i));
+      themePills.appendChild(btn);
+    });
   }
 
   function formatTime(s){
@@ -61,21 +177,25 @@
   }
 
   function renderAll(){
-    applyTheme(mode);
+    greeting.textContent = GREETINGS[mode];
+
+    modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === mode);
+    });
+
     timeDisplay.textContent = formatTime(remaining);
-    sessionWord.textContent = mode === MODE.WORK
-      ? `Session ${completedWork + 1}`
-      : (mode === MODE.LONG ? 'Take a long break' : 'Take a short break');
+
     const frac = remaining / (totalSeconds || 1);
     const offset = CIRCUMFERENCE * (1 - frac);
     progressRing.style.strokeDashoffset = offset;
+
     startPauseBtn.textContent = running ? 'Pause' : (remaining === totalSeconds ? 'Start' : 'Resume');
     renderSeeds();
   }
 
   function buildSeeds(){
     seedsWrap.innerHTML = '';
-    for(let i=0;i<4;i++){
+    for(let i = 0; i < 4; i++){
       const s = document.createElement('span');
       s.className = 'seed';
       seedsWrap.appendChild(s);
@@ -85,8 +205,7 @@
   function renderSeeds(){
     const seeds = seedsWrap.querySelectorAll('.seed');
     seeds.forEach((s, i) => {
-      s.classList.remove('filled', 'longbreak');
-      if(i < cycleIndex) s.classList.add('filled');
+      s.classList.toggle('filled', i < cycleIndex);
     });
   }
 
@@ -121,6 +240,15 @@
     totalSeconds = durationFor(mode);
     remaining = totalSeconds;
     setEditable(false);
+    renderAll();
+  }
+
+  function switchMode(newMode){
+    if(running) return;
+    mode = newMode;
+    totalSeconds = durationFor(mode);
+    remaining = totalSeconds;
+    setEditable(true);
     renderAll();
   }
 
@@ -177,7 +305,7 @@
         osc.start(now + idx * 0.22);
         osc.stop(now + idx * 0.22 + 0.55);
       });
-    }catch(e){ /* audio not available, fail silently */ }
+    }catch(e){}
   }
 
   startPauseBtn.addEventListener('click', () => {
@@ -186,6 +314,10 @@
 
   stopBtn.addEventListener('click', stopToSessionStart);
   resetBtn.addEventListener('click', fullReset);
+
+  modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchMode(tab.dataset.mode));
+  });
 
   [workInput, breakInput, longInput].forEach(input => {
     input.addEventListener('change', () => {
