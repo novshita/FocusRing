@@ -13,10 +13,31 @@
   const bgLayer = document.getElementById('bgLayer');
   const bgVideo = document.getElementById('bgVideo');
   const timeDisplay = document.getElementById('timeDisplay');
-  const gearBtn = document.getElementById('gearBtn');
+  const userBtn = document.getElementById('userBtn');
+  const userBtnIcon = document.getElementById('userBtnIcon');
+  const userBtnImg = document.getElementById('userBtnImg');
+  const userBtnName = document.getElementById('userBtnName');
   const settingsPanel = document.getElementById('settingsPanel');
   const settingsClose = document.getElementById('settingsClose');
   const settingsBody = document.getElementById('settingsBody');
+  const avatarBtn = document.getElementById('avatarBtn');
+  const avatarMenu = document.getElementById('avatarMenu');
+  const avatarViewOption = document.getElementById('avatarViewOption');
+  const avatarUploadOption = document.getElementById('avatarUploadOption');
+  const avatarRemoveOption = document.getElementById('avatarRemoveOption');
+  const avatarInput = document.getElementById('avatarInput');
+  const photoViewer = document.getElementById('photoViewer');
+  const photoViewerImg = document.getElementById('photoViewerImg');
+  const photoViewerClose = document.getElementById('photoViewerClose');
+  const profileIcon = document.getElementById('profileIcon');
+  const profileImg = document.getElementById('profileImg');
+  const profileNameInput = document.getElementById('profileNameInput');
+  const profileBioInput = document.getElementById('profileBioInput');
+  const bioSaveBtn = document.getElementById('bioSaveBtn');
+  const panelTabs = document.getElementById('panelTabs');
+  const themesSection = document.getElementById('themesSection');
+  const settingsSection = document.getElementById('settingsSection');
+  const appearanceGrid = document.getElementById('appearanceGrid');
   const rotPrev = document.getElementById('rotPrev');
   const rotNext = document.getElementById('rotNext');
   const rotPause = document.getElementById('rotPause');
@@ -357,13 +378,176 @@
     });
   });
 
-  gearBtn.addEventListener('click', () => {
+  userBtn.addEventListener('click', () => {
     settingsPanel.classList.toggle('open');
   });
 
   settingsClose.addEventListener('click', () => {
     settingsPanel.classList.remove('open');
   });
+
+  const PROFILE_NAME_KEY = 'focusring_profile_name';
+  const PROFILE_AVATAR_KEY = 'focusring_profile_avatar';
+  const PROFILE_BIO_KEY = 'focusring_profile_bio';
+  const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+  function setAvatarImage(dataUrl){
+    const hasAvatar = !!dataUrl;
+    userBtnImg.src = dataUrl || '';
+    userBtnImg.hidden = !hasAvatar;
+    userBtnIcon.hidden = hasAvatar;
+    profileImg.src = dataUrl || '';
+    profileImg.hidden = !hasAvatar;
+    profileIcon.hidden = hasAvatar;
+    avatarViewOption.hidden = !hasAvatar;
+    avatarRemoveOption.hidden = !hasAvatar;
+  }
+
+  function openAvatarMenu(){
+    avatarMenu.hidden = false;
+    avatarBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeAvatarMenu(){
+    avatarMenu.hidden = true;
+    avatarBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function openPhotoViewer(){
+    const dataUrl = localStorage.getItem(PROFILE_AVATAR_KEY);
+    if(!dataUrl) return;
+    photoViewerImg.src = dataUrl;
+    photoViewer.hidden = false;
+  }
+
+  function closePhotoViewer(){
+    photoViewer.hidden = true;
+    photoViewerImg.src = '';
+  }
+
+  function loadProfile(){
+    const name = localStorage.getItem(PROFILE_NAME_KEY) || '';
+    profileNameInput.value = name;
+    userBtnName.textContent = name || 'Guest';
+    profileBioInput.value = localStorage.getItem(PROFILE_BIO_KEY) || '';
+    setAvatarImage(localStorage.getItem(PROFILE_AVATAR_KEY) || '');
+  }
+
+  avatarBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if(avatarMenu.hidden){ openAvatarMenu(); } else { closeAvatarMenu(); }
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!avatarMenu.hidden && !avatarMenu.contains(e.target) && e.target !== avatarBtn){
+      closeAvatarMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key !== 'Escape') return;
+    if(!photoViewer.hidden){ closePhotoViewer(); }
+    else if(!avatarMenu.hidden){ closeAvatarMenu(); }
+  });
+
+  avatarViewOption.addEventListener('click', () => {
+    closeAvatarMenu();
+    openPhotoViewer();
+  });
+
+  photoViewerClose.addEventListener('click', closePhotoViewer);
+
+  photoViewer.addEventListener('click', (e) => {
+    if(e.target === photoViewer) closePhotoViewer();
+  });
+
+  avatarUploadOption.addEventListener('click', () => {
+    closeAvatarMenu();
+    avatarInput.click();
+  });
+
+  avatarInput.addEventListener('change', () => {
+    const file = avatarInput.files[0];
+    avatarInput.value = '';
+    if(!file) return;
+    if(!file.type.startsWith('image/')){
+      alert('Please choose an image file.');
+      return;
+    }
+    if(file.size > MAX_AVATAR_BYTES){
+      alert('Please choose an image smaller than 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      localStorage.setItem(PROFILE_AVATAR_KEY, reader.result);
+      setAvatarImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  avatarRemoveOption.addEventListener('click', () => {
+    closeAvatarMenu();
+    localStorage.removeItem(PROFILE_AVATAR_KEY);
+    setAvatarImage('');
+  });
+
+  profileNameInput.addEventListener('input', () => {
+    userBtnName.textContent = profileNameInput.value.trim() || 'Guest';
+  });
+
+  profileNameInput.addEventListener('change', () => {
+    const name = profileNameInput.value.trim();
+    if(name){ localStorage.setItem(PROFILE_NAME_KEY, name); }
+    else { localStorage.removeItem(PROFILE_NAME_KEY); }
+  });
+
+  function saveBio(){
+    const bio = profileBioInput.value.trim();
+    if(bio){ localStorage.setItem(PROFILE_BIO_KEY, bio); }
+    else { localStorage.removeItem(PROFILE_BIO_KEY); }
+  }
+
+  profileBioInput.addEventListener('change', saveBio);
+
+  bioSaveBtn.addEventListener('click', () => {
+    saveBio();
+    profileBioInput.blur();
+  });
+
+  loadProfile();
+
+  panelTabs.addEventListener('click', (e) => {
+    const btn = e.target.closest('.panel-tab');
+    if(!btn) return;
+    const target = btn.dataset.panel;
+    panelTabs.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t === btn));
+    themesSection.hidden = target !== 'themes';
+    settingsSection.hidden = target !== 'settings';
+  });
+
+  const APPEARANCE_KEY = 'focusring_panel_appearance';
+  const APPEARANCE_CLASSES = ['appearance-light', 'appearance-transparent'];
+
+  function applyAppearance(mode){
+    settingsPanel.classList.remove(...APPEARANCE_CLASSES);
+    if(mode === 'light' || mode === 'transparent'){
+      settingsPanel.classList.add(`appearance-${mode}`);
+    }
+    appearanceGrid.querySelectorAll('.appearance-swatch').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.appearance === mode);
+    });
+  }
+
+  appearanceGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.appearance-swatch');
+    if(!btn) return;
+    const mode = btn.dataset.appearance;
+    localStorage.setItem(APPEARANCE_KEY, mode);
+    applyAppearance(mode);
+  });
+
+  applyAppearance(localStorage.getItem(APPEARANCE_KEY) || 'dark');
 
   rotPrev.addEventListener('click', prevImage);
   rotNext.addEventListener('click', nextImage);
