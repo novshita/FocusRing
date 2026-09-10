@@ -52,30 +52,103 @@
     </div>
   </main>
 
-  <button class="gear-btn" id="gearBtn" aria-label="Theme settings">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  <button class="user-btn" id="userBtn" aria-label="Open profile and themes">
+    <span class="user-avatar" id="userBtnAvatar">
+      <svg id="userBtnIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <img id="userBtnImg" class="avatar-img" alt="" hidden>
+    </span>
+    <span class="user-name" id="userBtnName">Guest</span>
   </button>
 
   <div class="settings-panel" id="settingsPanel">
     <div class="settings-header">
-      <h2>Themes</h2>
       <button class="settings-close" id="settingsClose">&times;</button>
+      <div class="settings-profile">
+        <div class="profile-section-label">Profile</div>
+        <div class="avatar-wrap">
+          <button class="user-avatar user-avatar-lg" id="avatarBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Edit profile picture" title="Edit profile picture">
+            <svg id="profileIcon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <img id="profileImg" class="avatar-img" alt="" hidden>
+            <span class="avatar-edit-overlay" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </span>
+          </button>
+          <div class="avatar-menu" id="avatarMenu" hidden>
+            <button class="avatar-menu-item" id="avatarViewOption" type="button" hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              View photo
+            </button>
+            <button class="avatar-menu-item" id="avatarUploadOption" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload photo
+            </button>
+            <button class="avatar-menu-item avatar-menu-item-danger" id="avatarRemoveOption" type="button" hidden>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              Remove photo
+            </button>
+          </div>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" hidden>
+        <input class="settings-profile-name-input" id="profileNameInput" maxlength="24" placeholder="Guest" aria-label="Your name">
+        <div class="bio-row">
+          <span class="bio-label">Add bio</span>
+          <div class="bio-input-wrap">
+            <textarea class="settings-profile-bio" id="profileBioInput" maxlength="140" rows="2" placeholder="Add a short bio..." aria-label="Your bio"></textarea>
+            <button class="profile-link-btn bio-save-btn" id="bioSaveBtn" type="button">Save</button>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="settings-body" id="settingsBody"></div>
-    <div class="rotation-controls">
-      <button class="rot-btn" id="rotPrev" aria-label="Previous image">&#8249;</button>
-      <button class="rot-btn rot-pause" id="rotPause" aria-label="Pause rotation">&#10074;&#10074;</button>
-      <button class="rot-btn" id="rotNext" aria-label="Next image">&#8250;</button>
-      <label class="rot-interval">
-        <span>every</span>
-        <select id="rotInterval">
-          <option value="60">1 min</option>
-          <option value="180">3 min</option>
-          <option value="300" selected>5 min</option>
-          <option value="600">10 min</option>
-        </select>
-      </label>
+
+    <div class="panel-tabs" id="panelTabs">
+      <button class="panel-tab active" id="panelTabThemes" type="button" data-panel="themes">Themes</button>
+      <button class="panel-tab" id="panelTabSettings" type="button" data-panel="settings">Settings</button>
     </div>
+
+    <div class="panel-section" id="themesSection">
+      <div class="settings-body" id="settingsBody"></div>
+      <div class="rotation-controls">
+        <button class="rot-btn" id="rotPrev" aria-label="Previous image">&#8249;</button>
+        <button class="rot-btn rot-pause" id="rotPause" aria-label="Pause rotation">&#10074;&#10074;</button>
+        <button class="rot-btn" id="rotNext" aria-label="Next image">&#8250;</button>
+        <label class="rot-interval">
+          <span>every</span>
+          <select id="rotInterval">
+            <option value="60">1 min</option>
+            <option value="180">3 min</option>
+            <option value="300" selected>5 min</option>
+            <option value="600">10 min</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel-section" id="settingsSection" hidden>
+      <div class="settings-body">
+        <div class="category-section">
+          <div class="category-title">Appearance</div>
+          <div class="appearance-grid" id="appearanceGrid">
+            <button class="appearance-swatch" type="button" data-appearance="dark">
+              <span class="swatch-preview swatch-dark"></span>
+              <span>Dark</span>
+            </button>
+            <button class="appearance-swatch" type="button" data-appearance="light">
+              <span class="swatch-preview swatch-light"></span>
+              <span>Light</span>
+            </button>
+            <button class="appearance-swatch" type="button" data-appearance="transparent">
+              <span class="swatch-preview swatch-transparent"></span>
+              <span>Transparent</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="photo-viewer" id="photoViewer" hidden>
+    <button class="photo-viewer-close" id="photoViewerClose" type="button" aria-label="Close photo">&times;</button>
+    <img class="photo-viewer-img" id="photoViewerImg" alt="Profile photo">
   </div>
 
   <script src="script.js"></script>
