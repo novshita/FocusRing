@@ -11,8 +11,16 @@
   const progressRing = document.getElementById('progressRing');
   const seedsWrap = document.getElementById('seeds');
   const bgLayer = document.getElementById('bgLayer');
-  const themePills = document.getElementById('themePills');
+  const bgVideo = document.getElementById('bgVideo');
   const timeDisplay = document.getElementById('timeDisplay');
+  const gearBtn = document.getElementById('gearBtn');
+  const settingsPanel = document.getElementById('settingsPanel');
+  const settingsClose = document.getElementById('settingsClose');
+  const settingsBody = document.getElementById('settingsBody');
+  const rotPrev = document.getElementById('rotPrev');
+  const rotNext = document.getElementById('rotNext');
+  const rotPause = document.getElementById('rotPause');
+  const rotInterval = document.getElementById('rotInterval');
 
   const RADIUS = 148;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -26,64 +34,13 @@
     [MODE.LONG]: 'time for a long rest'
   };
 
-  const THEMES = [
-    {
-      id: 'sage-green',
-      name: 'sage green',
-      type: 'gradient',
-      bg: 'linear-gradient(135deg, #4a7c59 0%, #6b9e7a 40%, #8fbc8f 100%)',
-      overlay: 'rgba(0,0,0,0.15)'
-    },
-    {
-      id: 'cottage',
-      name: 'cottage',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.3)'
-    },
-    {
-      id: 'lofi-cafe',
-      name: 'lofi cafe',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.35)'
-    },
-    {
-      id: 'anime-landscape',
-      name: 'anime sky',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.25)'
-    },
-    {
-      id: 'ocean-sunset',
-      name: 'ocean sunset',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.3)'
-    },
-    {
-      id: 'mountain-dawn',
-      name: 'mountain dawn',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.3)'
-    },
-    {
-      id: 'rainy-window',
-      name: 'rainy window',
-      type: 'photo',
-      bg: 'url("https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=1920&q=80") center/cover',
-      overlay: 'rgba(0,0,0,0.35)'
-    },
-    {
-      id: 'lavender-dream',
-      name: 'lavender dream',
-      type: 'gradient',
-      bg: 'linear-gradient(135deg, #c3aed6 0%, #e8d5e0 40%, #f5e6cc 100%)',
-      overlay: 'rgba(0,0,0,0.08)',
-      darkText: true
-    }
+  const BASE = 'images';
+
+  const CATEGORIES = [
+    { id: 'scenery', name: 'Scenery', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] },
+    { id: 'galaxy', name: 'Galaxy', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg'] },
+    { id: 'gradient', name: 'Gradient', images: ['1.jpg','2.jpg','3.jpg'] },
+    { id: 'live', name: 'Live', images: ['1.mp4','2.mp4','3.mp4','4.mp4','5.mp4','6.mp4','7.mp4'], isVideo: true, baseUrl: 'https://github.com/novshita/FocusRing/releases/download/wallpapers-v1' }
   ];
 
   let mode = MODE.WORK;
@@ -93,13 +50,17 @@
   let timerId = null;
   let completedWork = 0;
   let cycleIndex = 0;
-  let currentTheme = 0;
-  let prevTimeStr = '30:00';
+
+  let activeCatIdx = 0;
+  let activeImgIdx = 0;
+  let autoRotate = true;
+  let rotateTimerId = null;
 
   buildSeeds();
-  buildThemePills();
-  applyTheme(0);
+  buildSettingsPanel();
+  applyBackground();
   renderAll();
+  startAutoRotate();
 
   function getMinutes(which){
     const el = which === 'work' ? workInput : which === 'break' ? breakInput : longInput;
@@ -113,61 +74,128 @@
     return getMinutes('long') * 60;
   }
 
-  function applyTheme(idx){
-    currentTheme = idx;
-    const t = THEMES[idx];
-    bgLayer.style.background = t.bg;
-    document.querySelector('.bg-overlay').style.background = t.overlay;
+  function getImageUrl(catIdx, imgIdx){
+    const cat = CATEGORIES[catIdx];
+    if(cat.baseUrl) return `${cat.baseUrl}/${cat.images[imgIdx]}`;
+    return `${BASE}/${cat.id}/${cat.images[imgIdx]}`;
+  }
 
-    const root = document.documentElement.style;
-    if(t.darkText){
-      root.setProperty('--text', '#3b312a');
-      root.setProperty('--text-soft', 'rgba(59,49,42,0.6)');
-      root.setProperty('--accent', '#3b312a');
-      root.setProperty('--accent-hover', 'rgba(59,49,42,0.8)');
-      root.setProperty('--glass', 'rgba(255,255,255,0.35)');
-      root.setProperty('--glass-border', 'rgba(255,255,255,0.5)');
-      root.setProperty('--glass-strong', 'rgba(255,255,255,0.5)');
-      root.setProperty('--digit-bg', 'rgba(255,255,255,0.4)');
-      root.setProperty('--digit-border', 'rgba(255,255,255,0.6)');
-      root.setProperty('--ring-track', 'rgba(59,49,42,0.2)');
-      root.setProperty('--ring-progress', 'rgba(59,49,42,0.75)');
-      root.setProperty('--seed-fill', 'rgba(59,49,42,0.7)');
-      root.setProperty('--seed-border', 'rgba(59,49,42,0.3)');
-      root.setProperty('--focus-ring', '#3b312a');
-      document.querySelector('.btn-primary').style.color = '#faf7f2';
+  function isGradientTheme(catIdx){
+    return CATEGORIES[catIdx].id === 'gradient';
+  }
+
+  function applyBackground(){
+    const cat = CATEGORIES[activeCatIdx];
+    const url = getImageUrl(activeCatIdx, activeImgIdx);
+
+    if(cat.isVideo){
+      bgLayer.style.backgroundImage = 'none';
+      bgLayer.style.display = 'none';
+      bgVideo.style.display = 'block';
+      bgVideo.src = url;
+      bgVideo.load();
+      bgVideo.play().catch(() => {});
     } else {
-      root.setProperty('--text', '#ffffff');
-      root.setProperty('--text-soft', 'rgba(255,255,255,0.7)');
-      root.setProperty('--accent', '#ffffff');
-      root.setProperty('--accent-hover', 'rgba(255,255,255,0.85)');
-      root.setProperty('--glass', 'rgba(255,255,255,0.15)');
-      root.setProperty('--glass-border', 'rgba(255,255,255,0.25)');
-      root.setProperty('--glass-strong', 'rgba(255,255,255,0.22)');
-      root.setProperty('--digit-bg', 'rgba(255,255,255,0.18)');
-      root.setProperty('--digit-border', 'rgba(255,255,255,0.3)');
-      root.setProperty('--ring-track', 'rgba(255,255,255,0.25)');
-      root.setProperty('--ring-progress', 'rgba(255,255,255,0.9)');
-      root.setProperty('--seed-fill', 'rgba(255,255,255,0.8)');
-      root.setProperty('--seed-border', 'rgba(255,255,255,0.4)');
-      root.setProperty('--focus-ring', '#ffffff');
-      document.querySelector('.btn-primary').style.color = '#2c2a24';
+      bgVideo.pause();
+      bgVideo.removeAttribute('src');
+      bgVideo.load();
+      bgVideo.style.display = 'none';
+      bgLayer.style.display = 'block';
+      bgLayer.style.backgroundImage = `url("${url}")`;
     }
 
-    themePills.querySelectorAll('.theme-pill').forEach((p, i) => {
-      p.classList.toggle('active', i === idx);
+    bgLayer.style.backgroundColor = '#1a1a2e';
+
+    const root = document.documentElement.style;
+    root.setProperty('--text', '#ffffff');
+    root.setProperty('--text-soft', 'rgba(255,255,255,0.7)');
+    root.setProperty('--accent', '#ffffff');
+    root.setProperty('--accent-hover', 'rgba(255,255,255,0.85)');
+    root.setProperty('--glass', 'rgba(255,255,255,0.15)');
+    root.setProperty('--glass-border', 'rgba(255,255,255,0.25)');
+    root.setProperty('--glass-strong', 'rgba(255,255,255,0.22)');
+    root.setProperty('--ring-track', 'rgba(255,255,255,0.25)');
+    root.setProperty('--ring-progress', 'rgba(255,255,255,0.9)');
+    root.setProperty('--seed-fill', 'rgba(255,255,255,0.8)');
+    root.setProperty('--seed-border', 'rgba(255,255,255,0.4)');
+    root.setProperty('--focus-ring', '#ffffff');
+    document.querySelector('.btn-primary').style.color = '#2c2a24';
+
+    updateThumbHighlights();
+  }
+
+  function buildSettingsPanel(){
+    settingsBody.innerHTML = '';
+    CATEGORIES.forEach((cat, ci) => {
+      const section = document.createElement('div');
+      section.className = 'category-section';
+
+      const title = document.createElement('div');
+      title.className = 'category-title';
+      title.textContent = cat.name;
+      section.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'category-grid';
+
+      cat.images.forEach((img, ii) => {
+        const btn = document.createElement('button');
+        btn.className = 'thumb-btn';
+        btn.dataset.cat = ci;
+        btn.dataset.img = ii;
+        if(cat.isVideo){
+          btn.classList.add('thumb-video');
+          const vid = document.createElement('video');
+          vid.src = cat.baseUrl ? `${cat.baseUrl}/${img}` : `${BASE}/${cat.id}/${img}`;
+          vid.muted = true;
+          vid.preload = 'metadata';
+          vid.addEventListener('loadeddata', () => { vid.currentTime = 1; });
+          btn.appendChild(vid);
+        } else {
+          btn.style.backgroundImage = `url("${BASE}/${cat.id}/${img}")`;
+        }
+        btn.addEventListener('click', () => {
+          activeCatIdx = ci;
+          activeImgIdx = ii;
+          applyBackground();
+        });
+        grid.appendChild(btn);
+      });
+
+      section.appendChild(grid);
+      settingsBody.appendChild(section);
     });
   }
 
-  function buildThemePills(){
-    themePills.innerHTML = '';
-    THEMES.forEach((t, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'theme-pill' + (i === 0 ? ' active' : '');
-      btn.textContent = t.name;
-      btn.addEventListener('click', () => applyTheme(i));
-      themePills.appendChild(btn);
+  function updateThumbHighlights(){
+    settingsBody.querySelectorAll('.thumb-btn').forEach(btn => {
+      const ci = parseInt(btn.dataset.cat);
+      const ii = parseInt(btn.dataset.img);
+      btn.classList.toggle('active', ci === activeCatIdx && ii === activeImgIdx);
     });
+  }
+
+  function nextImage(){
+    const cat = CATEGORIES[activeCatIdx];
+    activeImgIdx = (activeImgIdx + 1) % cat.images.length;
+    applyBackground();
+  }
+
+  function prevImage(){
+    const cat = CATEGORIES[activeCatIdx];
+    activeImgIdx = (activeImgIdx - 1 + cat.images.length) % cat.images.length;
+    applyBackground();
+  }
+
+  function startAutoRotate(){
+    stopAutoRotate();
+    if(!autoRotate) return;
+    const secs = parseInt(rotInterval.value, 10) || 300;
+    rotateTimerId = setInterval(nextImage, secs * 1000);
+  }
+
+  function stopAutoRotate(){
+    if(rotateTimerId){ clearInterval(rotateTimerId); rotateTimerId = null; }
   }
 
   function formatTime(s){
@@ -327,6 +355,28 @@
       if(mode === MODE.LONG && input === longInput){ totalSeconds = durationFor(mode); remaining = totalSeconds; }
       renderAll();
     });
+  });
+
+  gearBtn.addEventListener('click', () => {
+    settingsPanel.classList.toggle('open');
+  });
+
+  settingsClose.addEventListener('click', () => {
+    settingsPanel.classList.remove('open');
+  });
+
+  rotPrev.addEventListener('click', prevImage);
+  rotNext.addEventListener('click', nextImage);
+
+  rotPause.addEventListener('click', () => {
+    autoRotate = !autoRotate;
+    rotPause.classList.toggle('paused', !autoRotate);
+    rotPause.innerHTML = autoRotate ? '&#10074;&#10074;' : '&#9654;';
+    if(autoRotate){ startAutoRotate(); } else { stopAutoRotate(); }
+  });
+
+  rotInterval.addEventListener('change', () => {
+    if(autoRotate) startAutoRotate();
   });
 
   setEditable(true);
