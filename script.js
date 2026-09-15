@@ -56,6 +56,7 @@
   };
 
   const BASE = 'images';
+  const SETTINGS_KEY = 'focusring_settings';
 
   const CATEGORIES = [
     { id: 'scenery', name: 'Scenery', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] },
@@ -63,6 +64,12 @@
     { id: 'gradient', name: 'Gradient', images: ['1.jpg','2.jpg','3.jpg'] },
     { id: 'live', name: 'Live', images: ['1.mp4','2.mp4','3.mp4','4.mp4','5.mp4','6.mp4','7.mp4'], isVideo: true, baseUrl: 'https://github.com/novshita/FocusRing/releases/download/wallpapers-v1' }
   ];
+
+  const saved = loadSettings();
+  restoreMinutes(workInput, saved.workMins);
+  restoreMinutes(breakInput, saved.breakMins);
+  restoreMinutes(longInput, saved.longMins);
+  restoreRotateSecs(saved.rotateSecs);
 
   let mode = MODE.WORK;
   let totalSeconds = getMinutes('work') * 60;
@@ -72,16 +79,53 @@
   let completedWork = 0;
   let cycleIndex = 0;
 
-  let activeCatIdx = 0;
-  let activeImgIdx = 0;
-  let autoRotate = true;
+  let activeCatIdx = validCatIdx(saved.catIdx);
+  let activeImgIdx = validImgIdx(activeCatIdx, saved.imgIdx);
+  let autoRotate = saved.autoRotate !== false;
   let rotateTimerId = null;
 
   buildSeeds();
   buildSettingsPanel();
   applyBackground();
+  renderRotPause();
   renderAll();
   startAutoRotate();
+
+  function loadSettings(){
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
+    catch(e) { return {}; }
+  }
+
+  function saveSettings(){
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      workMins: workInput.value,
+      breakMins: breakInput.value,
+      longMins: longInput.value,
+      catIdx: activeCatIdx,
+      imgIdx: activeImgIdx,
+      rotateSecs: rotInterval.value,
+      autoRotate: autoRotate
+    }));
+  }
+
+  function restoreMinutes(el, value){
+    const n = parseInt(value, 10);
+    if(isNaN(n)) return;
+    el.value = Math.min(Math.max(n, parseInt(el.min, 10)), parseInt(el.max, 10));
+  }
+
+  function restoreRotateSecs(value){
+    const match = Array.from(rotInterval.options).some(o => o.value === value);
+    if(match) rotInterval.value = value;
+  }
+
+  function validCatIdx(i){
+    return Number.isInteger(i) && i >= 0 && i < CATEGORIES.length ? i : 0;
+  }
+
+  function validImgIdx(catIdx, i){
+    return Number.isInteger(i) && i >= 0 && i < CATEGORIES[catIdx].images.length ? i : 0;
+  }
 
   function getMinutes(which){
     const el = which === 'work' ? workInput : which === 'break' ? breakInput : longInput;
@@ -143,6 +187,7 @@
     document.querySelector('.btn-primary').style.color = '#2c2a24';
 
     updateThumbHighlights();
+    saveSettings();
   }
 
   function buildSettingsPanel(){
@@ -206,6 +251,11 @@
     const cat = CATEGORIES[activeCatIdx];
     activeImgIdx = (activeImgIdx - 1 + cat.images.length) % cat.images.length;
     applyBackground();
+  }
+
+  function renderRotPause(){
+    rotPause.classList.toggle('paused', !autoRotate);
+    rotPause.innerHTML = autoRotate ? '&#10074;&#10074;' : '&#9654;';
   }
 
   function startAutoRotate(){
@@ -374,6 +424,7 @@
       if(mode === MODE.WORK && input === workInput){ totalSeconds = durationFor(mode); remaining = totalSeconds; }
       if(mode === MODE.BREAK && input === breakInput){ totalSeconds = durationFor(mode); remaining = totalSeconds; }
       if(mode === MODE.LONG && input === longInput){ totalSeconds = durationFor(mode); remaining = totalSeconds; }
+      saveSettings();
       renderAll();
     });
   });
@@ -554,13 +605,14 @@
 
   rotPause.addEventListener('click', () => {
     autoRotate = !autoRotate;
-    rotPause.classList.toggle('paused', !autoRotate);
-    rotPause.innerHTML = autoRotate ? '&#10074;&#10074;' : '&#9654;';
+    renderRotPause();
     if(autoRotate){ startAutoRotate(); } else { stopAutoRotate(); }
+    saveSettings();
   });
 
   rotInterval.addEventListener('change', () => {
     if(autoRotate) startAutoRotate();
+    saveSettings();
   });
 
   setEditable(true);
