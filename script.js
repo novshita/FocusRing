@@ -634,6 +634,7 @@
   bioSaveBtn.addEventListener('click', () => {
     saveBio();
     profileBioInput.blur();
+    settingsPanel.classList.remove('open');
   });
 
   loadProfile();
