@@ -42,6 +42,9 @@
   const rotNext = document.getElementById('rotNext');
   const rotPause = document.getElementById('rotPause');
   const rotInterval = document.getElementById('rotInterval');
+  const soundToggle = document.getElementById('soundToggle');
+  const notifyToggle = document.getElementById('notifyToggle');
+  const notifyNote = document.getElementById('notifyNote');
 
   const RADIUS = 148;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -76,6 +79,7 @@
   let remaining = totalSeconds;
   let running = false;
   let timerId = null;
+  let endsAt = 0;
   let completedWork = 0;
   let cycleIndex = 0;
 
@@ -84,10 +88,14 @@
   let autoRotate = saved.autoRotate !== false;
   let rotateTimerId = null;
 
+  let soundEnabled = saved.soundEnabled !== false;
+  let notifyEnabled = saved.notifyEnabled === true && canNotify() && Notification.permission === 'granted';
+
   buildSeeds();
   buildSettingsPanel();
   applyBackground();
   renderRotPause();
+  renderAlertToggles();
   renderAll();
   startAutoRotate();
 
@@ -104,7 +112,9 @@
       catIdx: activeCatIdx,
       imgIdx: activeImgIdx,
       rotateSecs: rotInterval.value,
-      autoRotate: autoRotate
+      autoRotate: autoRotate,
+      soundEnabled: soundEnabled,
+      notifyEnabled: notifyEnabled
     }));
   }
 
@@ -314,12 +324,13 @@
   }
 
   function tick(){
-    remaining -= 1;
+    remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
     if(remaining <= 0){
-      remaining = 0;
+      const finished = mode;
       renderAll();
       playChime();
       advanceMode();
+      notifySessionEnd(finished, mode);
       return;
     }
     renderAll();
@@ -354,6 +365,7 @@
   function startTimer(){
     if(running) return;
     running = true;
+    endsAt = Date.now() + remaining * 1000;
     setEditable(false);
     timerId = setInterval(tick, 1000);
     renderAll();
@@ -388,7 +400,31 @@
     renderAll();
   }
 
+  function canNotify(){
+    return 'Notification' in window;
+  }
+
+  function notifySessionEnd(finished, next){
+    if(!notifyEnabled || !canNotify() || Notification.permission !== 'granted') return;
+    if(!document.hidden) return;
+    const title = finished === MODE.WORK ? 'Focus session complete' : 'Break over';
+    const body = next === MODE.WORK ? 'Ready when you are — start your next focus session.'
+      : next === MODE.LONG ? 'Time for a long break.'
+      : 'Time for a short break.';
+    try{
+      new Notification(title, { body: body, tag: 'focusring-session' });
+    }catch(e){}
+  }
+
+  function renderAlertToggles(){
+    soundToggle.checked = soundEnabled;
+    notifyToggle.checked = notifyEnabled;
+    notifyNote.hidden = canNotify();
+    if(!canNotify()) notifyNote.textContent = "This browser doesn't support notifications.";
+  }
+
   function playChime(){
+    if(!soundEnabled) return;
     try{
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       const now = ctx.currentTime;
@@ -613,6 +649,48 @@
   rotInterval.addEventListener('change', () => {
     if(autoRotate) startAutoRotate();
     saveSettings();
+  });
+
+  soundToggle.addEventListener('change', () => {
+    soundEnabled = soundToggle.checked;
+    if(soundEnabled) playChime();
+    saveSettings();
+  });
+
+  notifyToggle.addEventListener('change', () => {
+    if(!notifyToggle.checked){
+      notifyEnabled = false;
+      notifyNote.hidden = true;
+      saveSettings();
+      return;
+    }
+
+    if(!canNotify()){
+      notifyToggle.checked = false;
+      notifyEnabled = false;
+      notifyNote.textContent = "This browser doesn't support notifications.";
+      notifyNote.hidden = false;
+      return;
+    }
+
+    Promise.resolve(
+      Notification.permission === 'default' ? Notification.requestPermission() : Notification.permission
+    ).then(permission => {
+      if(permission === 'granted'){
+        notifyEnabled = true;
+        notifyNote.hidden = true;
+      } else {
+        notifyToggle.checked = false;
+        notifyEnabled = false;
+        notifyNote.textContent = 'Notifications are blocked. Allow them for this site in your browser settings, then try again.';
+        notifyNote.hidden = false;
+      }
+      saveSettings();
+    });
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden && running) tick();
   });
 
   setEditable(true);
