@@ -105,17 +105,22 @@
   }
 
   function saveSettings(){
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-      workMins: workInput.value,
-      breakMins: breakInput.value,
-      longMins: longInput.value,
-      catIdx: activeCatIdx,
-      imgIdx: activeImgIdx,
-      rotateSecs: rotInterval.value,
-      autoRotate: autoRotate,
-      soundEnabled: soundEnabled,
-      notifyEnabled: notifyEnabled
-    }));
+    try{
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        workMins: workInput.value,
+        breakMins: breakInput.value,
+        longMins: longInput.value,
+        catIdx: activeCatIdx,
+        imgIdx: activeImgIdx,
+        rotateSecs: rotInterval.value,
+        autoRotate: autoRotate,
+        soundEnabled: soundEnabled,
+        notifyEnabled: notifyEnabled
+      }));
+    }catch(e){
+      // Storage full or blocked: settings just won't stick this session. Never
+      // let this abort startup -- applyBackground() calls it during init.
+    }
   }
 
   function restoreMinutes(el, value){
@@ -400,6 +405,23 @@
     renderAll();
   }
 
+  // The avatar renders at 72px, so storing the original file would waste the
+  // localStorage quota (base64 is UTF-16 in storage, roughly 2.7x the file size).
+  function shrinkAvatar(dataUrl, done){
+    const img = new Image();
+    img.onload = () => {
+      const crop = Math.min(img.width, img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = Math.min(crop, AVATAR_MAX_PX);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, (img.width - crop) / 2, (img.height - crop) / 2, crop, crop,
+        0, 0, canvas.width, canvas.height);
+      done(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => done(null);
+    img.src = dataUrl;
+  }
+
   function canNotify(){
     return 'Notification' in window;
   }
@@ -476,7 +498,8 @@
   const PROFILE_NAME_KEY = 'focusring_profile_name';
   const PROFILE_AVATAR_KEY = 'focusring_profile_avatar';
   const PROFILE_BIO_KEY = 'focusring_profile_bio';
-  const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+  const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+  const AVATAR_MAX_PX = 256;
 
   function setAvatarImage(dataUrl){
     const hasAvatar = !!dataUrl;
@@ -562,13 +585,24 @@
       return;
     }
     if(file.size > MAX_AVATAR_BYTES){
-      alert('Please choose an image smaller than 2MB.');
+      alert('Please choose an image smaller than 10MB.');
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      localStorage.setItem(PROFILE_AVATAR_KEY, reader.result);
-      setAvatarImage(reader.result);
+      shrinkAvatar(reader.result, small => {
+        if(!small){
+          alert("That image couldn't be read. Try a different file.");
+          return;
+        }
+        try{
+          localStorage.setItem(PROFILE_AVATAR_KEY, small);
+        }catch(err){
+          alert("Couldn't save your photo — browser storage is full. Remove the photo and try again.");
+          return;
+        }
+        setAvatarImage(small);
+      });
     };
     reader.readAsDataURL(file);
   });
