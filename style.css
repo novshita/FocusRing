@@ -710,6 +710,66 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
   background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.05));
 }
 
+.setting-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.setting-label{
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--panel-text);
+}
+
+.setting-hint{
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--panel-text-soft);
+}
+
+.setting-switch{
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--panel-control-bg);
+  border: 1px solid var(--panel-control-border);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.setting-switch::after{
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--panel-text);
+  transition: transform 0.2s ease;
+}
+
+.setting-switch:checked{ background: rgba(126, 200, 148, 0.6); }
+.setting-switch:checked::after{ transform: translateX(18px); }
+
+.setting-note{
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--panel-text-soft);
+  padding-top: 2px;
+}
+
 .category-grid{
   display: grid;
   grid-template-columns: repeat(3, 1fr);
