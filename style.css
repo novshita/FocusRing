@@ -863,6 +863,62 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
 
 .bar-label-today{ color: var(--panel-text); font-weight: 600; }
 
+.badge-heading{ margin-top: 32px; }
+
+.badge-list{
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.badge-row{
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: var(--panel-control-bg);
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.badge-row.badge-earned{ opacity: 1; }
+
+.badge-icon{
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  line-height: 1;
+  /* Locked badges keep their emoji so they stay identifiable, just drained of
+     colour. State is also carried by the dimming and the "locked" text. */
+  filter: grayscale(1);
+  opacity: 0.8;
+}
+
+.badge-earned .badge-icon{
+  filter: none;
+  opacity: 1;
+}
+
+.badge-text{ min-width: 0; }
+
+.badge-name{
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--panel-text);
+  text-shadow: var(--panel-text-shadow);
+}
+
+.badge-need{
+  font-size: 11px;
+  color: var(--panel-text-soft);
+  text-shadow: var(--panel-text-shadow);
+}
+
 .setting-row{
   display: flex;
   align-items: center;

@@ -64,6 +64,28 @@
   const BASE = 'images';
   const SETTINGS_KEY = 'focusring_settings';
   const HISTORY_KEY = 'focusring_history';
+  const BADGE_FLAGS_KEY = 'focusring_badge_flags';
+
+  const BADGES = [
+    { emoji: '🌱', name: 'First Focus', need: 'Finish your first session',
+      done: s => s.totalSessions >= 1, have: s => s.totalSessions, goal: 1 },
+    { emoji: '🎯', name: 'Finding Rhythm', need: 'Finish 5 sessions',
+      done: s => s.totalSessions >= 5, have: s => s.totalSessions, goal: 5 },
+    { emoji: '🏅', name: 'Committed', need: 'Finish 25 sessions',
+      done: s => s.totalSessions >= 25, have: s => s.totalSessions, goal: 25 },
+    { emoji: '🔥', name: 'Three in a Row', need: 'Focus 3 days running',
+      done: s => s.bestStreak >= 3, have: s => s.bestStreak, goal: 3 },
+    { emoji: '⚡', name: 'Week Warrior', need: 'Focus 7 days running',
+      done: s => s.bestStreak >= 7, have: s => s.bestStreak, goal: 7 },
+    { emoji: '🧠', name: 'Deep Work', need: '2 hours in a single day',
+      done: s => s.bestDay >= 120, have: s => Math.floor(s.bestDay / 60), goal: 2 },
+    { emoji: '⏳', name: 'Ten Hours Deep', need: '10 hours focused in total',
+      done: s => s.totalMinutes >= 600, have: s => Math.floor(s.totalMinutes / 60), goal: 10 },
+    { emoji: '🌅', name: 'Early Riser', need: 'Finish a session before 8am',
+      done: s => !!s.flags.early },
+    { emoji: '🦉', name: 'Night Owl', need: 'Finish a session after 11pm',
+      done: s => !!s.flags.night }
+  ];
 
   const CATEGORIES = [
     { id: 'scenery', name: 'Scenery', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] },
@@ -118,6 +140,7 @@
   }
 
   function logSession(minutes){
+    recordTimeOfDayFlags();
     const history = loadHistory();
     const key = dayKey(new Date());
     const day = history[key] || { m: 0, n: 0 };
@@ -147,7 +170,51 @@
       cursor.setDate(cursor.getDate() - 1);
     }
 
-    return { totalMinutes: totalMinutes, totalSessions: totalSessions, streak: streak };
+    return {
+      totalMinutes: totalMinutes,
+      totalSessions: totalSessions,
+      streak: streak,
+      bestStreak: bestStreak(history),
+      bestDay: Object.keys(history).reduce((max, k) => Math.max(max, history[k].m), 0),
+      flags: loadBadgeFlags()
+    };
+  }
+
+  // Badges use the best streak ever, not the current one, so an earned badge is
+  // never taken away when a streak breaks. Dates are stepped at noon to dodge
+  // daylight-saving shifts making a day 23 or 25 hours long.
+  function bestStreak(history){
+    let best = 0;
+    let run = 0;
+    let prevKey = null;
+    Object.keys(history).sort().forEach(key => {
+      if(prevKey){
+        const expected = new Date(prevKey + 'T12:00:00');
+        expected.setDate(expected.getDate() + 1);
+        run = dayKey(expected) === key ? run + 1 : 1;
+      } else {
+        run = 1;
+      }
+      prevKey = key;
+      if(run > best) best = run;
+    });
+    return best;
+  }
+
+  function loadBadgeFlags(){
+    try { return JSON.parse(localStorage.getItem(BADGE_FLAGS_KEY)) || {}; }
+    catch(e) { return {}; }
+  }
+
+  // Time-of-day badges can't be recomputed later -- history only keeps daily
+  // totals -- so they're stamped at the moment the session ends.
+  function recordTimeOfDayFlags(){
+    const hour = new Date().getHours();
+    const flags = loadBadgeFlags();
+    if(hour < 8) flags.early = true;
+    if(hour >= 23) flags.night = true;
+    try { localStorage.setItem(BADGE_FLAGS_KEY, JSON.stringify(flags)); }
+    catch(e) {}
   }
 
   function lastSevenDays(history){
@@ -348,6 +415,7 @@
       empty.className = 'journey-empty';
       empty.textContent = 'No sessions yet. Finish your first focus session and your streak starts here.';
       journeyBody.appendChild(empty);
+      renderBadges(stats);
       return;
     }
 
@@ -384,7 +452,7 @@
     head.className = 'chart-head';
     const heading = document.createElement('span');
     heading.className = 'category-title';
-    heading.textContent = 'Last 7 days';
+    heading.textContent = '📊 Last 7 days';
     const total = document.createElement('span');
     total.className = 'chart-total';
     total.textContent = formatDuration(weekTotal);
@@ -419,6 +487,50 @@
       chart.appendChild(col);
     });
     journeyBody.appendChild(chart);
+    renderBadges(stats);
+  }
+
+  function renderBadges(stats){
+    const heading = document.createElement('div');
+    heading.className = 'category-title badge-heading';
+    const unlocked = BADGES.filter(b => b.done(stats)).length;
+    heading.textContent = '🏆 Achievements · ' + unlocked + '/' + BADGES.length;
+    journeyBody.appendChild(heading);
+
+    const list = document.createElement('div');
+    list.className = 'badge-list';
+
+    BADGES.forEach(badge => {
+      const earned = badge.done(stats);
+      const row = document.createElement('div');
+      row.className = 'badge-row' + (earned ? ' badge-earned' : '');
+
+      const icon = document.createElement('span');
+      icon.className = 'badge-icon';
+      icon.textContent = badge.emoji;
+      icon.setAttribute('aria-hidden', 'true');
+
+      const text = document.createElement('div');
+      text.className = 'badge-text';
+      const name = document.createElement('div');
+      name.className = 'badge-name';
+      name.textContent = badge.name;
+      const need = document.createElement('div');
+      need.className = 'badge-need';
+      if(!earned && badge.goal){
+        need.textContent = badge.need + ' · ' + Math.min(badge.have(stats), badge.goal) + '/' + badge.goal;
+      } else {
+        need.textContent = badge.need;
+      }
+      text.appendChild(name);
+      text.appendChild(need);
+
+      row.appendChild(icon);
+      row.appendChild(text);
+      list.appendChild(row);
+    });
+
+    journeyBody.appendChild(list);
   }
 
   function renderRotPause(){
