@@ -1,5 +1,6 @@
 (function(){
   const greeting = document.getElementById('greeting');
+  const dateLine = document.getElementById('dateLine');
   const modeTabs = document.getElementById('modeTabs');
   const startPauseBtn = document.getElementById('startPauseBtn');
   const stopBtn = document.getElementById('stopBtn');
@@ -90,6 +91,7 @@
   let activeImgIdx = validImgIdx(activeCatIdx, saved.imgIdx);
   let autoRotate = saved.autoRotate !== false;
   let rotateTimerId = null;
+  let renderedDay = '';
 
   let soundEnabled = saved.soundEnabled !== false;
   let notifyEnabled = saved.notifyEnabled === true && canNotify() && Notification.permission === 'granted';
@@ -441,7 +443,20 @@
     return `${mm}:${ss}`;
   }
 
+  // Only touches the DOM when the day actually changes, so calling it from
+  // renderAll() every tick is cheap and the date stays right past midnight.
+  function renderDate(){
+    const now = new Date();
+    const key = dayKey(now);
+    if(key === renderedDay) return;
+    renderedDay = key;
+    const weekday = now.toLocaleDateString(undefined, { weekday: 'long' });
+    const month = now.toLocaleDateString(undefined, { month: 'long' });
+    dateLine.textContent = weekday + ' · ' + now.getDate() + ' ' + month;
+  }
+
   function renderAll(){
+    renderDate();
     greeting.textContent = GREETINGS[mode];
 
     modeTabs.querySelectorAll('.mode-tab').forEach(tab => {
@@ -879,7 +894,9 @@
   });
 
   document.addEventListener('visibilitychange', () => {
-    if(!document.hidden && running) tick();
+    if(document.hidden) return;
+    renderDate();
+    if(running) tick();
   });
 
   setEditable(true);
