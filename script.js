@@ -37,6 +37,8 @@
   const panelTabs = document.getElementById('panelTabs');
   const themesSection = document.getElementById('themesSection');
   const settingsSection = document.getElementById('settingsSection');
+  const journeySection = document.getElementById('journeySection');
+  const journeyBody = document.getElementById('journeyBody');
   const appearanceGrid = document.getElementById('appearanceGrid');
   const rotPrev = document.getElementById('rotPrev');
   const rotNext = document.getElementById('rotNext');
@@ -60,6 +62,7 @@
 
   const BASE = 'images';
   const SETTINGS_KEY = 'focusring_settings';
+  const HISTORY_KEY = 'focusring_history';
 
   const CATEGORIES = [
     { id: 'scenery', name: 'Scenery', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] },
@@ -98,6 +101,71 @@
   renderAlertToggles();
   renderAll();
   startAutoRotate();
+
+  // History is aggregated per local day ({"2026-09-17": {m: minutes, n: sessions}})
+  // rather than one record per session, so it stays a few KB even after years.
+  function dayKey(d){
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  function loadHistory(){
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {}; }
+    catch(e) { return {}; }
+  }
+
+  function logSession(minutes){
+    const history = loadHistory();
+    const key = dayKey(new Date());
+    const day = history[key] || { m: 0, n: 0 };
+    day.m += minutes;
+    day.n += 1;
+    history[key] = day;
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); }
+    catch(e) { return; }
+    renderJourney();
+  }
+
+  function journeyStats(history){
+    let totalMinutes = 0;
+    let totalSessions = 0;
+    Object.keys(history).forEach(k => {
+      totalMinutes += history[k].m;
+      totalSessions += history[k].n;
+    });
+
+    // A streak survives today being empty -- it only breaks once yesterday is
+    // empty too, otherwise it would read as 0 every morning.
+    const cursor = new Date();
+    if(!history[dayKey(cursor)]) cursor.setDate(cursor.getDate() - 1);
+    let streak = 0;
+    while(history[dayKey(cursor)]){
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    return { totalMinutes: totalMinutes, totalSessions: totalSessions, streak: streak };
+  }
+
+  function lastSevenDays(history){
+    const days = [];
+    for(let i = 6; i >= 0; i--){
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const rec = history[dayKey(d)];
+      days.push({ date: d, minutes: rec ? rec.m : 0 });
+    }
+    return days;
+  }
+
+  function formatDuration(minutes){
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if(h && m) return h + 'h ' + m + 'm';
+    if(h) return h + 'h';
+    return m + 'm';
+  }
 
   function loadSettings(){
     try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
@@ -268,6 +336,89 @@
     applyBackground();
   }
 
+  function renderJourney(){
+    const history = loadHistory();
+    const stats = journeyStats(history);
+    journeyBody.innerHTML = '';
+
+    if(stats.totalSessions === 0){
+      const empty = document.createElement('p');
+      empty.className = 'journey-empty';
+      empty.textContent = 'No sessions yet. Finish your first focus session and your streak starts here.';
+      journeyBody.appendChild(empty);
+      return;
+    }
+
+    const tiles = document.createElement('div');
+    tiles.className = 'stat-tiles';
+    [
+      [stats.streak, stats.streak === 1 ? 'day streak' : 'day streak'],
+      [stats.totalSessions, stats.totalSessions === 1 ? 'session' : 'sessions'],
+      [formatDuration(stats.totalMinutes), 'focused']
+    ].forEach(pair => {
+      const tile = document.createElement('div');
+      tile.className = 'stat-tile';
+      const value = document.createElement('div');
+      value.className = 'stat-value';
+      value.textContent = pair[0];
+      const label = document.createElement('div');
+      label.className = 'stat-label';
+      label.textContent = pair[1];
+      tile.appendChild(value);
+      tile.appendChild(label);
+      tiles.appendChild(tile);
+    });
+    journeyBody.appendChild(tiles);
+
+    const week = lastSevenDays(history);
+    const weekTotal = week.reduce((sum, d) => sum + d.minutes, 0);
+    const peak = Math.max.apply(null, week.map(d => d.minutes));
+    // Scale to at least an hour, rounded up to the next half hour, so a single
+    // short day doesn't fill the whole track just for being the only day.
+    const scaleMax = Math.max(60, Math.ceil(peak / 30) * 30);
+    const todayKey = dayKey(new Date());
+
+    const head = document.createElement('div');
+    head.className = 'chart-head';
+    const heading = document.createElement('span');
+    heading.className = 'category-title';
+    heading.textContent = 'Last 7 days';
+    const total = document.createElement('span');
+    total.className = 'chart-total';
+    total.textContent = formatDuration(weekTotal);
+    head.appendChild(heading);
+    head.appendChild(total);
+    journeyBody.appendChild(head);
+
+    const chart = document.createElement('div');
+    chart.className = 'bar-chart';
+    week.forEach(day => {
+      const isToday = dayKey(day.date) === todayKey;
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+
+      const track = document.createElement('div');
+      track.className = 'bar-track';
+      const fill = document.createElement('div');
+      fill.className = 'bar-fill';
+      fill.style.height = (day.minutes > 0 ? Math.max((day.minutes / scaleMax) * 100, 4) : 0) + '%';
+      const value = document.createElement('span');
+      value.className = 'bar-value';
+      value.textContent = day.minutes > 0 ? formatDuration(day.minutes) : '--';
+      track.appendChild(fill);
+      track.appendChild(value);
+
+      const label = document.createElement('span');
+      label.className = 'bar-label' + (isToday ? ' bar-label-today' : '');
+      label.textContent = day.date.toLocaleDateString(undefined, { weekday: 'narrow' });
+
+      col.appendChild(track);
+      col.appendChild(label);
+      chart.appendChild(col);
+    });
+    journeyBody.appendChild(chart);
+  }
+
   function renderRotPause(){
     rotPause.classList.toggle('paused', !autoRotate);
     rotPause.innerHTML = autoRotate ? '&#10074;&#10074;' : '&#9654;';
@@ -345,6 +496,7 @@
     stopTimer();
     if(mode === MODE.WORK){
       completedWork += 1;
+      logSession(Math.round(totalSeconds / 60));
       cycleIndex += 1;
       const isLong = cycleIndex >= 4;
       mode = isLong ? MODE.LONG : MODE.BREAK;
@@ -645,7 +797,9 @@
     const target = btn.dataset.panel;
     panelTabs.querySelectorAll('.panel-tab').forEach(t => t.classList.toggle('active', t === btn));
     themesSection.hidden = target !== 'themes';
+    journeySection.hidden = target !== 'journey';
     settingsSection.hidden = target !== 'settings';
+    if(target === 'journey') renderJourney();
   });
 
   const APPEARANCE_KEY = 'focusring_panel_appearance';

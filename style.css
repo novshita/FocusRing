@@ -65,6 +65,28 @@ body{
   z-index: 1;
 }
 
+.brand{
+  position: fixed;
+  top: 22px;
+  left: 26px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  pointer-events: none;
+}
+
+.brand-mark{ flex-shrink: 0; opacity: 0.95; }
+
+.brand-name{
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
 .greeting{
   font-family: 'DM Serif Display', serif;
   font-size: 28px;
@@ -326,6 +348,7 @@ button.user-avatar:hover{ filter: brightness(0.85); }
   --panel-control-bg-hover: rgba(255,255,255,0.2);
   --panel-control-border: rgba(255,255,255,0.15);
   --panel-text-shadow: none;
+  --panel-accent: #7FC99A;
   position: fixed;
   top: 0;
   right: -420px;
@@ -354,6 +377,7 @@ button.user-avatar:hover{ filter: brightness(0.85); }
   --panel-control-bg: rgba(0,0,0,0.06);
   --panel-control-bg-hover: rgba(0,0,0,0.12);
   --panel-control-border: rgba(0,0,0,0.15);
+  --panel-accent: #3E8E60;
 }
 
 .settings-panel.appearance-transparent{
@@ -710,6 +734,125 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
   background: linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.05));
 }
 
+.journey-empty{
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--panel-text-soft);
+  text-shadow: var(--panel-text-shadow);
+}
+
+.stat-tiles{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.stat-tile{
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-control-bg);
+  border: 1px solid var(--panel-control-border);
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+/* Sans, not the display serif -- a serif hero figure reads as decoration. */
+.stat-value{
+  font-family: 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--panel-text);
+}
+
+.stat-label{
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--panel-text-soft);
+}
+
+.chart-head{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  /* Leaves room for the hover tooltip, which sits above the bar tracks. */
+  margin-bottom: 30px;
+}
+
+.chart-head .category-title{ margin-bottom: 0; }
+
+.chart-total{
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--panel-text);
+  text-shadow: var(--panel-text-shadow);
+}
+
+.bar-chart{
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 130px;
+}
+
+.bar-col{
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+
+.bar-track{
+  position: relative;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  background: var(--panel-control-bg);
+  border-radius: 5px;
+}
+
+.bar-fill{
+  width: 100%;
+  background: var(--panel-accent);
+  border-radius: 4px;
+  transition: height 0.35s ease;
+}
+
+.bar-value{
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--panel-text);
+  color: var(--panel-bg);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.bar-col:hover .bar-value{ opacity: 1; }
+
+.bar-label{
+  font-size: 11px;
+  color: var(--panel-text-soft);
+  text-shadow: var(--panel-text-shadow);
+}
+
+.bar-label-today{ color: var(--panel-text); font-weight: 600; }
+
 .setting-row{
   display: flex;
   align-items: center;
@@ -867,6 +1010,9 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
 }
 
 @media (max-width: 420px){
+  .brand{ top: 18px; left: 18px; gap: 7px; }
+  .brand-name{ font-size: 16px; }
+  .brand-mark{ width: 18px; height: 18px; }
   .timer-area{ width: 260px; height: 260px; }
   .timer-display{ font-size: 56px; }
   .greeting{ font-size: 22px; }

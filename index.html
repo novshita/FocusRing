@@ -14,6 +14,14 @@
   <video class="bg-video" id="bgVideo" autoplay loop muted playsinline></video>
   <div class="bg-overlay"></div>
 
+  <div class="brand">
+    <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" opacity="0.4"/>
+      <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="brand-name">FocusRing</span>
+  </div>
+
   <main class="app">
     <p class="greeting" id="greeting">let's get to work!</p>
 
@@ -102,7 +110,12 @@
 
     <div class="panel-tabs" id="panelTabs">
       <button class="panel-tab active" id="panelTabThemes" type="button" data-panel="themes">Themes</button>
+      <button class="panel-tab" id="panelTabJourney" type="button" data-panel="journey">Journey</button>
       <button class="panel-tab" id="panelTabSettings" type="button" data-panel="settings">Settings</button>
+    </div>
+
+    <div class="panel-section" id="journeySection" hidden>
+      <div class="settings-body" id="journeyBody"></div>
     </div>
 
     <div class="panel-section" id="themesSection">
