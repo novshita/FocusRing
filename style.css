@@ -78,7 +78,13 @@ body{
   pointer-events: none;
 }
 
-.brand-mark{ flex-shrink: 0; opacity: 0.95; }
+/* Self-coloured logo tile, so it doesn't inherit --text like the wordmark. The
+   shadow stops it reading as pasted on top of the wallpaper. */
+.brand-mark{
+  flex-shrink: 0;
+  display: block;
+  filter: drop-shadow(0 2px 7px rgba(0,0,0,0.35));
+}
 
 .brand-name{
   font-family: 'DM Serif Display', serif;
@@ -1078,7 +1084,7 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
 @media (max-width: 420px){
   .brand{ top: 18px; left: 18px; gap: 7px; }
   .brand-name{ font-size: 16px; }
-  .brand-mark{ width: 18px; height: 18px; }
+  .brand-mark{ width: 23px; height: 23px; }
   .timer-area{ width: 260px; height: 260px; }
   .timer-display{ font-size: 56px; }
   .greeting{ font-size: 22px; }
