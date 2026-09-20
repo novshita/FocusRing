@@ -14,9 +14,10 @@ const BASE = 'images';
 // Release instead. See project notes before adding more.
 const CATEGORIES = [
   { id: 'scenery', name: 'Scenery', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg','6.jpg'] },
+  { id: 'ocean', name: 'Ocean', images: ['1.jpg','2.jpg'] },
   { id: 'galaxy', name: 'Galaxy', images: ['1.jpg','2.jpg','3.jpg','4.jpg','5.jpg'] },
   { id: 'gradient', name: 'Gradient', images: ['1.jpg','2.jpg','3.jpg'] },
-  { id: 'live', name: 'Live', images: ['1.mp4','2.mp4','3.mp4','4.mp4','5.mp4','6.mp4','7.mp4'], isVideo: true, baseUrl: 'https://github.com/novshita/FocusRing/releases/download/wallpapers-v1' }
+  { id: 'live', name: 'Live', images: ['1.mp4','2.mp4','3.mp4','4.mp4','5.mp4','6.mp4','7.mp4','8.mp4','9.mp4'], isVideo: true, baseUrl: 'https://github.com/novshita/FocusRing/releases/download/wallpapers-v1' }
 ];
 
 let activeCatIdx = 0;
@@ -24,8 +25,20 @@ let activeImgIdx = 0;
 let autoRotate = true;
 let rotateTimerId = null;
 
-function validCatIdx(i){
-  return Number.isInteger(i) && i >= 0 && i < CATEGORIES.length ? i : 0;
+// The category order before 'ocean' was added. Settings saved back then stored a
+// bare index, so it has to be read against this list -- reading it against the
+// current one would land people on the wrong wallpaper.
+const LEGACY_ORDER = ['scenery', 'galaxy', 'gradient', 'live'];
+
+// Stored by id, not position, so inserting or reordering a category doesn't
+// silently move someone onto a different wallpaper.
+function resolveCatIdx(saved){
+  const byId = CATEGORIES.findIndex(c => c.id === saved.catId);
+  if(byId !== -1) return byId;
+
+  const legacyId = LEGACY_ORDER[saved.catIdx];
+  const migrated = legacyId ? CATEGORIES.findIndex(c => c.id === legacyId) : -1;
+  return migrated !== -1 ? migrated : 0;
 }
 
 function validImgIdx(catIdx, i){
@@ -45,7 +58,7 @@ function imageUrl(catIdx, imgIdx){
 
 function save(){
   patchSettings({
-    catIdx: activeCatIdx,
+    catId: CATEGORIES[activeCatIdx].id,
     imgIdx: activeImgIdx,
     rotateSecs: rotInterval.value,
     autoRotate: autoRotate
@@ -175,7 +188,7 @@ function stopAutoRotate(){
 export function initThemes(){
   const saved = readSettings();
   restoreRotateSecs(saved.rotateSecs);
-  activeCatIdx = validCatIdx(saved.catIdx);
+  activeCatIdx = resolveCatIdx(saved);
   activeImgIdx = validImgIdx(activeCatIdx, saved.imgIdx);
   autoRotate = saved.autoRotate !== false;
 
