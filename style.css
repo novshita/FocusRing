@@ -1092,3 +1092,93 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
   .settings-panel{ width: 100vw; max-width: 100vw; right: -100vw; }
   .category-grid{ grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Growth rings (Journey tab) */
+.garden-head{ margin-top: 28px; margin-bottom: 6px; }
+
+.garden{
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  margin: 10px auto 0;
+  overflow: visible;
+}
+
+.garden-ring{
+  fill: none;
+  stroke: var(--panel-text-soft);
+}
+
+.garden-ring.garden-grown{ stroke: var(--panel-text); }
+
+.garden-core{ fill: var(--panel-text); }
+
+/* Today's ring draws itself in when the Journey tab is rendered. */
+.garden-today.garden-grown{
+  stroke-dasharray: var(--ring-len);
+  animation: drawRing 1.4s ease-out both;
+}
+
+@keyframes drawRing{
+  from{ stroke-dashoffset: var(--ring-len); }
+  to{ stroke-dashoffset: 0; }
+}
+
+.garden-note{
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--panel-text-soft);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .garden-today.garden-grown{ animation: none; }
+}
+
+/* Year heatmap (Journey tab) */
+.heatmap-head{ margin-top: 28px; margin-bottom: 10px; }
+
+.heatmap-months{
+  display: grid;
+  margin-bottom: 4px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--panel-text-soft);
+}
+
+.heatmap-months span{ white-space: nowrap; }
+
+.heatmap{
+  display: grid;
+  grid-template-rows: repeat(7, auto);
+  gap: 2px;
+}
+
+.heat-cell{
+  display: block;
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--panel-text);
+}
+
+.heat-0{ background: color-mix(in srgb, var(--panel-text) 12%, transparent); }
+.heat-1{ background: color-mix(in srgb, var(--panel-text) 35%, transparent); }
+.heat-2{ background: color-mix(in srgb, var(--panel-text) 55%, transparent); }
+.heat-3{ background: color-mix(in srgb, var(--panel-text) 78%, transparent); }
+.heat-4{ background: var(--panel-text); }
+
+.heat-today{ outline: 1px solid var(--panel-text); outline-offset: 1px; }
+
+.heatmap-legend{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--panel-text-soft);
+}
+
+.heatmap-legend .heat-cell{ width: 10px; }
+.heatmap-legend .heat-cell:first-of-type{ margin-left: 4px; }
+.heatmap-legend .heat-cell:last-of-type{ margin-right: 4px; }

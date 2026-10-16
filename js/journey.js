@@ -201,7 +201,190 @@ export function renderJourney(){
     chart.appendChild(col);
   });
   journeyBody.appendChild(chart);
+  renderHeatmap(history);
+  renderGarden(history);
   renderBadges(stats);
+}
+
+const HEATMAP_WEEKS = 53;
+
+function heatLevel(minutes){
+  if(minutes <= 0) return 0;
+  if(minutes < 30) return 1;
+  if(minutes < 60) return 2;
+  if(minutes < 120) return 3;
+  return 4;
+}
+
+// One cell per day for the past year, a column per week (Sunday on top), laid
+// out by explicit grid position so the partial first and last weeks line up.
+// Dates are built from y/m/d at noon rather than by adding 24h, so daylight
+// saving shifts can't skip or repeat a day.
+function renderHeatmap(history){
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const first = new Date(today.getFullYear(), today.getMonth(),
+    today.getDate() - today.getDay() - (HEATMAP_WEEKS - 1) * 7, 12);
+  const todayKey = dayKey(today);
+
+  const head = document.createElement('div');
+  head.className = 'chart-head heatmap-head';
+  const heading = document.createElement('span');
+  heading.className = 'category-title';
+  heading.textContent = '🗓️ Focus year';
+  const total = document.createElement('span');
+  total.className = 'chart-total';
+  head.appendChild(heading);
+  head.appendChild(total);
+  journeyBody.appendChild(head);
+
+  const columns = 'repeat(' + HEATMAP_WEEKS + ', 1fr)';
+  const months = document.createElement('div');
+  months.className = 'heatmap-months';
+  months.style.gridTemplateColumns = columns;
+  const grid = document.createElement('div');
+  grid.className = 'heatmap';
+  grid.style.gridTemplateColumns = columns;
+
+  let activeDays = 0;
+  let lastMonth = -1;
+  let lastLabelCol = -10;
+
+  for(let w = 0; w < HEATMAP_WEEKS; w++){
+    for(let dow = 0; dow < 7; dow++){
+      const date = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w * 7 + dow, 12);
+      if(date > today) continue;
+
+      if(dow === 0 && date.getMonth() !== lastMonth){
+        lastMonth = date.getMonth();
+        // Skip a label that would collide with the previous one.
+        if(w - lastLabelCol >= 3){
+          const label = document.createElement('span');
+          label.textContent = date.toLocaleDateString(undefined, { month: 'short' });
+          label.style.gridColumn = String(w + 1);
+          months.appendChild(label);
+          lastLabelCol = w;
+        }
+      }
+
+      const rec = history[dayKey(date)];
+      const minutes = rec ? rec.m : 0;
+      if(minutes > 0) activeDays += 1;
+
+      const cell = document.createElement('span');
+      cell.className = 'heat-cell heat-' + heatLevel(minutes) + (dayKey(date) === todayKey ? ' heat-today' : '');
+      cell.style.gridColumn = String(w + 1);
+      cell.style.gridRow = String(dow + 1);
+      cell.title = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+        (minutes > 0 ? ' · ' + formatDuration(minutes) : ' · no focus');
+      grid.appendChild(cell);
+    }
+  }
+
+  total.textContent = activeDays + (activeDays === 1 ? ' day' : ' days');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'heatmap-wrap';
+  wrap.setAttribute('role', 'img');
+  wrap.setAttribute('aria-label', 'Focus heatmap for the past year. You focused on ' + activeDays + ' days.');
+  wrap.appendChild(months);
+  wrap.appendChild(grid);
+  journeyBody.appendChild(wrap);
+
+  const legend = document.createElement('div');
+  legend.className = 'heatmap-legend';
+  legend.setAttribute('aria-hidden', 'true');
+  legend.appendChild(document.createTextNode('less'));
+  for(let level = 0; level <= 4; level++){
+    const swatch = document.createElement('span');
+    swatch.className = 'heat-cell heat-' + level;
+    legend.appendChild(swatch);
+  }
+  legend.appendChild(document.createTextNode('more'));
+  journeyBody.appendChild(legend);
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const GARDEN_DAYS = 30;
+const GARDEN_SIZE = 220;
+const GARDEN_MIN_R = 12;
+const GARDEN_MAX_R = 104;
+
+function svgEl(name, attrs){
+  const el = document.createElementNS(SVG_NS, name);
+  Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+  return el;
+}
+
+// A cross-section of the last 30 days, like a tree trunk: the oldest day is the
+// innermost ring and today is the outermost. Thicker, brighter rings mean more
+// focus; a day with no focus is a faint hairline -- a thin year in the wood.
+function renderGarden(history){
+  const days = [];
+  for(let i = GARDEN_DAYS - 1; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const rec = history[dayKey(d)];
+    days.push({ date: d, minutes: rec ? rec.m : 0, sessions: rec ? rec.n : 0 });
+  }
+  const grown = days.filter(d => d.minutes > 0).length;
+
+  const head = document.createElement('div');
+  head.className = 'chart-head garden-head';
+  const heading = document.createElement('span');
+  heading.className = 'category-title';
+  heading.textContent = '🌳 Growth rings';
+  const total = document.createElement('span');
+  total.className = 'chart-total';
+  total.textContent = grown + ' of ' + GARDEN_DAYS + ' days';
+  head.appendChild(heading);
+  head.appendChild(total);
+  journeyBody.appendChild(head);
+
+  const svg = svgEl('svg', {
+    'class': 'garden',
+    viewBox: '0 0 ' + GARDEN_SIZE + ' ' + GARDEN_SIZE,
+    role: 'img',
+    'aria-label': 'Growth rings for your last ' + GARDEN_DAYS + ' days. ' +
+      grown + ' of them have a focus session.'
+  });
+  const c = GARDEN_SIZE / 2;
+  const step = (GARDEN_MAX_R - GARDEN_MIN_R) / (GARDEN_DAYS - 1);
+
+  svg.appendChild(svgEl('circle', { 'class': 'garden-core', cx: c, cy: c, r: 4 }));
+
+  days.forEach((day, i) => {
+    const r = GARDEN_MIN_R + step * i;
+    const isToday = i === GARDEN_DAYS - 1;
+    // Wood is never perfectly round, so each ring drifts a little off-centre.
+    const wobble = Math.sin(i * 1.7) * 0.9;
+    const strength = Math.min(day.minutes / 120, 1);
+    const ring = svgEl('circle', {
+      'class': 'garden-ring' + (day.minutes > 0 ? ' garden-grown' : '') + (isToday ? ' garden-today' : ''),
+      cx: c + wobble,
+      cy: c - wobble * 0.6,
+      r: r,
+      'stroke-width': day.minutes > 0 ? (0.9 + strength * 1.6).toFixed(2) : 0.5,
+      'stroke-opacity': day.minutes > 0 ? (0.55 + strength * 0.45).toFixed(2) : 0.35
+    });
+    if(isToday && day.minutes > 0){
+      ring.style.setProperty('--ring-len', (2 * Math.PI * r).toFixed(1));
+    }
+    const title = svgEl('title', {});
+    title.textContent = day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      (day.minutes > 0
+        ? ' · ' + formatDuration(day.minutes) + ' · ' + day.sessions + (day.sessions === 1 ? ' session' : ' sessions')
+        : ' · no focus');
+    ring.appendChild(title);
+    svg.appendChild(ring);
+  });
+
+  journeyBody.appendChild(svg);
+
+  const note = document.createElement('p');
+  note.className = 'garden-note';
+  note.textContent = 'Each ring is a day, oldest in the middle, today on the outside. Thicker means more focus.';
+  journeyBody.appendChild(note);
 }
 
 function renderBadges(stats){
