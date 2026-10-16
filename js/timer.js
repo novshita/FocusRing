@@ -16,9 +16,15 @@ const longInput = document.getElementById('longInput');
 const progressRing = document.getElementById('progressRing');
 const seedsWrap = document.getElementById('seeds');
 const timeDisplay = document.getElementById('timeDisplay');
+const timerArea = document.querySelector('.timer-area');
+const breathLabel = document.getElementById('breathLabel');
+const ritualToggle = document.getElementById('ritualToggle');
 
 const RADIUS = 148;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+// One breath: half inhale, half exhale. Keep in step with the `breathe`
+// animation duration in style.css.
+const RITUAL_MS = 8000;
 
 const GREETINGS = {
   [MODE.WORK]: "let's get to work!",
@@ -34,6 +40,9 @@ let timerId = null;
 let endsAt = 0;
 let completedWork = 0;
 let cycleIndex = 0;
+let ritualEnabled = true;
+let preparing = false;
+let ritualTimeouts = [];
 
 function restoreMinutes(el, value){
   const n = parseInt(value, 10);
@@ -89,7 +98,9 @@ function renderAll(){
   const frac = remaining / (totalSeconds || 1);
   progressRing.style.strokeDashoffset = CIRCUMFERENCE * (1 - frac);
 
-  startPauseBtn.textContent = running ? 'Pause' : (remaining === totalSeconds ? 'Start' : 'Resume');
+  startPauseBtn.textContent = preparing ? 'Skip'
+    : running ? 'Pause'
+    : (remaining === totalSeconds ? 'Start' : 'Resume');
   renderSeeds();
 }
 
@@ -106,6 +117,7 @@ function tick(){
   if(remaining <= 0){
     const finished = mode;
     renderAll();
+    celebrate();
     playChime();
     advanceMode();
     notifySessionEnd(finished, mode);
@@ -131,8 +143,41 @@ function advanceMode(){
   renderAll();
 }
 
+// Restarting the animation needs a forced reflow between removing and re-adding
+// the class, otherwise back-to-back completions wouldn't replay it.
+function celebrate(){
+  timerArea.classList.remove('pulse');
+  void timerArea.offsetWidth;
+  timerArea.classList.add('pulse');
+}
+
+function clearRitual(){
+  ritualTimeouts.forEach(clearTimeout);
+  ritualTimeouts = [];
+  preparing = false;
+  timerArea.classList.remove('preparing');
+  breathLabel.textContent = '';
+}
+
+function beginRitual(){
+  preparing = true;
+  timerArea.classList.add('preparing');
+  breathLabel.textContent = 'breathe in';
+  setEditable(false);
+  ritualTimeouts = [
+    setTimeout(() => { breathLabel.textContent = 'breathe out'; }, RITUAL_MS / 2),
+    setTimeout(endRitual, RITUAL_MS)
+  ];
+  renderAll();
+}
+
+function endRitual(){
+  clearRitual();
+  startTimer();
+}
+
 function switchMode(newMode){
-  if(running) return;
+  if(running || preparing) return;
   mode = newMode;
   totalSeconds = durationFor(mode);
   remaining = totalSeconds;
@@ -160,6 +205,7 @@ function pauseTimer(){
 }
 
 function stopToSessionStart(){
+  clearRitual();
   stopTimer();
   totalSeconds = durationFor(mode);
   remaining = totalSeconds;
@@ -168,6 +214,7 @@ function stopToSessionStart(){
 }
 
 function fullReset(){
+  clearRitual();
   stopTimer();
   mode = MODE.WORK;
   completedWork = 0;
@@ -197,8 +244,24 @@ export function initTimer(){
   buildSeeds();
   renderAll();
 
+  ritualEnabled = saved.ritualEnabled !== false;
+  ritualToggle.checked = ritualEnabled;
+  ritualToggle.addEventListener('change', () => {
+    ritualEnabled = ritualToggle.checked;
+    patchSettings({ ritualEnabled: ritualEnabled });
+  });
+
+  timerArea.addEventListener('animationend', (e) => {
+    if(e.target === timerArea) timerArea.classList.remove('pulse');
+  });
+
+  // The ritual only precedes a fresh work session; resuming a paused one or
+  // starting a break begins immediately.
   startPauseBtn.addEventListener('click', () => {
-    if(running){ pauseTimer(); } else { startTimer(); }
+    if(preparing){ endRitual(); }
+    else if(running){ pauseTimer(); }
+    else if(ritualEnabled && mode === MODE.WORK && remaining === totalSeconds){ beginRitual(); }
+    else { startTimer(); }
   });
 
   stopBtn.addEventListener('click', stopToSessionStart);

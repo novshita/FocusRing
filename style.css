@@ -191,6 +191,70 @@ body{
   text-shadow: 0 2px 16px rgba(0,0,0,0.15);
 }
 
+.timer-display{ transition: opacity 0.4s ease; }
+
+/* Breathing moment: the orb swells for the inhale and settles for the exhale.
+   The 8s duration must match RITUAL_MS in timer.js. */
+.breath{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.breath-orb{
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  border: 2px solid var(--ring-progress);
+  background: var(--ring-track);
+  box-shadow: 0 0 48px var(--ring-track);
+  transform: scale(0.55);
+}
+
+.breath-label{
+  position: absolute;
+  z-index: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  color: var(--text);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.15);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.timer-area.preparing .breath,
+.timer-area.preparing .breath-label{ opacity: 1; }
+.timer-area.preparing .timer-display{ opacity: 0; }
+.timer-area.preparing .breath-orb{ animation: breathe 8s ease-in-out forwards; }
+
+@keyframes breathe{
+  0%   { transform: scale(0.55); }
+  50%  { transform: scale(1); }
+  100% { transform: scale(0.55); }
+}
+
+/* Session-complete pulse: the ring swells and glows once, then settles. */
+.timer-area.pulse{ animation: ringSwell 1.2s ease-out; }
+.timer-area.pulse .progress-ring{ animation: ringGlow 1.2s ease-out; }
+
+@keyframes ringSwell{
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ringGlow{
+  0%   { filter: drop-shadow(0 0 0 var(--ring-progress)); }
+  30%  { filter: drop-shadow(0 0 16px var(--ring-progress)); }
+  100% { filter: drop-shadow(0 0 0 var(--ring-progress)); }
+}
+
 .controls{
   display: flex;
   gap: 12px;
@@ -1079,6 +1143,8 @@ button.user-avatar[aria-expanded="true"] .avatar-edit-overlay{
 
 @media (prefers-reduced-motion: reduce){
   .bg-layer, .bg-overlay, button, .seed, .edit-row, .mode-tab, .settings-panel, .user-btn, .thumb-btn{ transition: none !important; }
+  .breath-orb, .timer-area.pulse, .timer-area.pulse .progress-ring{ animation: none !important; }
+  .breath-orb{ transform: scale(0.8); }
 }
 
 @media (max-width: 420px){

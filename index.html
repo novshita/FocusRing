@@ -37,6 +37,10 @@
         <circle class="ring-track" cx="160" cy="160" r="148"></circle>
         <circle class="ring-progress" id="progressRing" cx="160" cy="160" r="148"></circle>
       </svg>
+      <div class="breath" aria-hidden="true">
+        <span class="breath-orb"></span>
+      </div>
+      <div class="breath-label" id="breathLabel" aria-live="polite"></div>
       <div class="timer-display" id="timeDisplay">30:00</div>
     </div>
 
@@ -155,6 +159,17 @@
               <span>Transparent</span>
             </button>
           </div>
+        </div>
+
+        <div class="category-section">
+          <div class="category-title">Focus</div>
+          <label class="setting-row">
+            <span class="setting-label">
+              Breathing moment before work
+              <span class="setting-hint">One slow breath before a focus session starts</span>
+            </span>
+            <input type="checkbox" class="setting-switch" id="ritualToggle">
+          </label>
         </div>
 
         <div class="category-section">
