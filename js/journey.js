@@ -19,6 +19,8 @@ const BADGES = [
     done: s => s.bestStreak >= 7, have: s => s.bestStreak, goal: 7 },
   { emoji: '🧠', name: 'Deep Work', need: '2 hours in a single day',
     done: s => s.bestDay >= 120, have: s => Math.floor(s.bestDay / 60), goal: 2 },
+  { emoji: '💪', name: 'Full Day', need: 'Finish 10 sessions in a single day',
+    done: s => s.bestDaySessions >= 10, have: s => s.bestDaySessions, goal: 10 },
   { emoji: '⏳', name: 'Ten Hours Deep', need: '10 hours focused in total',
     done: s => s.totalMinutes >= 600, have: s => Math.floor(s.totalMinutes / 60), goal: 10 },
   { emoji: '🌅', name: 'Early Riser', need: 'Finish a session before 8am',
@@ -92,6 +94,7 @@ function journeyStats(history){
     streak: streak,
     bestStreak: bestStreak(history),
     bestDay: Object.keys(history).reduce((max, k) => Math.max(max, history[k].m), 0),
+    bestDaySessions: Object.keys(history).reduce((max, k) => Math.max(max, history[k].n), 0),
     flags: loadBadgeFlags()
   };
 }
