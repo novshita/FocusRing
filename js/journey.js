@@ -1,128 +1,43 @@
 import { dayKey, formatDuration } from './util.js';
-import { readJSON, writeJSON } from './storage.js';
+import { repo } from './repo.js';
+import { journeyStats, lastSevenDays, heatLevel, gardenRings, GARDEN_DAYS, GARDEN_SIZE } from './stats.js';
+import { BADGES } from './badges.js';
 import { downloadShareCard } from './sharecard.js';
-
-const HISTORY_KEY = 'focusring_history';
-const BADGE_FLAGS_KEY = 'focusring_badge_flags';
 
 const journeyBody = document.getElementById('journeyBody');
 
-const BADGES = [
-  { emoji: '🌱', name: 'First Focus', need: 'Finish your first session',
-    done: s => s.totalSessions >= 1, have: s => s.totalSessions, goal: 1 },
-  { emoji: '🎯', name: 'Finding Rhythm', need: 'Finish 5 sessions',
-    done: s => s.totalSessions >= 5, have: s => s.totalSessions, goal: 5 },
-  { emoji: '🏅', name: 'Committed', need: 'Finish 25 sessions',
-    done: s => s.totalSessions >= 25, have: s => s.totalSessions, goal: 25 },
-  { emoji: '🔥', name: 'Three in a Row', need: 'Focus 3 days running',
-    done: s => s.bestStreak >= 3, have: s => s.bestStreak, goal: 3 },
-  { emoji: '⚡', name: 'Week Warrior', need: 'Focus 7 days running',
-    done: s => s.bestStreak >= 7, have: s => s.bestStreak, goal: 7 },
-  { emoji: '🧠', name: 'Deep Work', need: '2 hours in a single day',
-    done: s => s.bestDay >= 120, have: s => Math.floor(s.bestDay / 60), goal: 2 },
-  { emoji: '⏳', name: 'Ten Hours Deep', need: '10 hours focused in total',
-    done: s => s.totalMinutes >= 600, have: s => Math.floor(s.totalMinutes / 60), goal: 10 },
-  { emoji: '🌅', name: 'Early Riser', need: 'Finish a session before 8am',
-    done: s => !!s.flags.early },
-  { emoji: '🦉', name: 'Night Owl', need: 'Finish a session after 11pm',
-    done: s => !!s.flags.night }
-];
+// Each render awaits the repo, so a slow earlier read could land after a newer
+// one; only the latest request is allowed to draw.
+let renderSeq = 0;
 
-// History is aggregated per local day ({"2026-09-17": {m: minutes, n: sessions}})
-// rather than one record per session, so it stays a few KB even after years.
-function loadHistory(){
-  return readJSON(HISTORY_KEY, {});
-}
-
-function loadBadgeFlags(){
-  return readJSON(BADGE_FLAGS_KEY, {});
-}
-
-// Time-of-day badges can't be recomputed later -- history only keeps daily
-// totals -- so they're stamped at the moment the session ends.
-function recordTimeOfDayFlags(){
-  const hour = new Date().getHours();
-  const flags = loadBadgeFlags();
-  if(hour < 8) flags.early = true;
-  if(hour >= 23) flags.night = true;
-  writeJSON(BADGE_FLAGS_KEY, flags);
-}
-
-// Badges use the best streak ever, not the current one, so an earned badge is
-// never taken away when a streak breaks. Dates are stepped at noon to dodge
-// daylight-saving shifts making a day 23 or 25 hours long.
-function bestStreak(history){
-  let best = 0;
-  let run = 0;
-  let prevKey = null;
-  Object.keys(history).sort().forEach(key => {
-    if(prevKey){
-      const expected = new Date(prevKey + 'T12:00:00');
-      expected.setDate(expected.getDate() + 1);
-      run = dayKey(expected) === key ? run + 1 : 1;
-    } else {
-      run = 1;
-    }
-    prevKey = key;
-    if(run > best) best = run;
-  });
-  return best;
-}
-
-function journeyStats(history){
-  let totalMinutes = 0;
-  let totalSessions = 0;
-  Object.keys(history).forEach(k => {
-    totalMinutes += history[k].m;
-    totalSessions += history[k].n;
-  });
-
-  // A streak survives today being empty -- it only breaks once yesterday is
-  // empty too, otherwise it would read as 0 every morning.
-  const cursor = new Date();
-  if(!history[dayKey(cursor)]) cursor.setDate(cursor.getDate() - 1);
-  let streak = 0;
-  while(history[dayKey(cursor)]){
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  return {
-    totalMinutes: totalMinutes,
-    totalSessions: totalSessions,
-    streak: streak,
-    bestStreak: bestStreak(history),
-    bestDay: Object.keys(history).reduce((max, k) => Math.max(max, history[k].m), 0),
-    flags: loadBadgeFlags()
-  };
-}
-
-function lastSevenDays(history){
-  const days = [];
-  for(let i = 6; i >= 0; i--){
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const rec = history[dayKey(d)];
-    days.push({ date: d, minutes: rec ? rec.m : 0 });
-  }
-  return days;
+function showMessage(text, className){
+  journeyBody.innerHTML = '';
+  const p = document.createElement('p');
+  p.className = className;
+  p.textContent = text;
+  journeyBody.appendChild(p);
 }
 
 export function recordSession(minutes){
-  recordTimeOfDayFlags();
-  const history = loadHistory();
-  const key = dayKey(new Date());
-  const day = history[key] || { m: 0, n: 0 };
-  day.m += minutes;
-  day.n += 1;
-  history[key] = day;
-  if(!writeJSON(HISTORY_KEY, history)) return;
-  renderJourney();
+  return repo.recordSession(minutes).then(ok => { if(ok) renderJourney(); });
 }
 
-export function renderJourney(){
-  const history = loadHistory();
-  const stats = journeyStats(history);
+export async function renderJourney(){
+  const seq = ++renderSeq;
+  if(!journeyBody.firstChild) showMessage('Loading your journey…', 'journey-empty');
+
+  let data;
+  try {
+    data = await repo.getJourney();
+  } catch(e) {
+    if(seq === renderSeq) showMessage("Couldn't load your journey. Close this tab and try again.", 'journey-empty journey-error');
+    return;
+  }
+  if(seq !== renderSeq) return;
+
+  const now = new Date();
+  const history = data.history;
+  const stats = journeyStats(history, data.flags, now);
   journeyBody.innerHTML = '';
 
   if(stats.totalSessions === 0){
@@ -155,13 +70,13 @@ export function renderJourney(){
   });
   journeyBody.appendChild(tiles);
 
-  const week = lastSevenDays(history);
+  const week = lastSevenDays(history, now);
   const weekTotal = week.reduce((sum, d) => sum + d.minutes, 0);
   const peak = Math.max.apply(null, week.map(d => d.minutes));
   // Scale to at least an hour, rounded up to the next half hour, so a single
   // short day doesn't fill the whole track just for being the only day.
   const scaleMax = Math.max(60, Math.ceil(peak / 30) * 30);
-  const todayKey = dayKey(new Date());
+  const todayKey = dayKey(now);
 
   const head = document.createElement('div');
   head.className = 'chart-head';
@@ -203,19 +118,11 @@ export function renderJourney(){
   });
   journeyBody.appendChild(chart);
   renderHeatmap(history);
-  renderGarden(history, stats);
+  renderGarden(history, stats, now);
   renderBadges(stats);
 }
 
 const HEATMAP_WEEKS = 53;
-
-function heatLevel(minutes){
-  if(minutes <= 0) return 0;
-  if(minutes < 30) return 1;
-  if(minutes < 60) return 2;
-  if(minutes < 120) return 3;
-  return 4;
-}
 
 // One cell per day for the past year, a column per week (Sunday on top), laid
 // out by explicit grid position so the partial first and last weeks line up.
@@ -306,51 +213,14 @@ function renderHeatmap(history){
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const GARDEN_DAYS = 30;
-const GARDEN_SIZE = 220;
-const GARDEN_MIN_R = 12;
-const GARDEN_MAX_R = 104;
-
 function svgEl(name, attrs){
   const el = document.createElementNS(SVG_NS, name);
   Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
   return el;
 }
 
-// Geometry for the last 30 days as concentric rings in a 220-unit square: the
-// oldest day is the innermost ring and today is the outermost. Thicker, more
-// opaque rings mean more focus; a day with no focus is a faint hairline. Shared
-// by the on-screen SVG and the exported share card so they always match.
-function gardenRings(history){
-  const c = GARDEN_SIZE / 2;
-  const step = (GARDEN_MAX_R - GARDEN_MIN_R) / (GARDEN_DAYS - 1);
-  const rings = [];
-  for(let i = 0; i < GARDEN_DAYS; i++){
-    const date = new Date();
-    date.setDate(date.getDate() - (GARDEN_DAYS - 1 - i));
-    const rec = history[dayKey(date)];
-    const minutes = rec ? rec.m : 0;
-    const strength = Math.min(minutes / 120, 1);
-    // Wood is never perfectly round, so each ring drifts a little off-centre.
-    const wobble = Math.sin(i * 1.7) * 0.9;
-    rings.push({
-      date: date,
-      minutes: minutes,
-      sessions: rec ? rec.n : 0,
-      grown: minutes > 0,
-      isToday: i === GARDEN_DAYS - 1,
-      r: GARDEN_MIN_R + step * i,
-      cx: c + wobble,
-      cy: c - wobble * 0.6,
-      width: minutes > 0 ? 0.9 + strength * 1.6 : 0.5,
-      opacity: minutes > 0 ? 0.55 + strength * 0.45 : 0.35
-    });
-  }
-  return rings;
-}
-
-function renderGarden(history, stats){
-  const rings = gardenRings(history);
+function renderGarden(history, stats, now){
+  const rings = gardenRings(history, now);
   const grown = rings.filter(r => r.grown).length;
 
   const head = document.createElement('div');

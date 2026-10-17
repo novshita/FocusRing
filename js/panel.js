@@ -1,4 +1,4 @@
-import { readText, writeText } from './storage.js';
+import { repo } from './repo.js';
 import { renderJourney } from './journey.js';
 
 const userBtn = document.getElementById('userBtn');
@@ -13,7 +13,6 @@ const SECTIONS = {
   settings: document.getElementById('settingsSection')
 };
 
-const APPEARANCE_KEY = 'focusring_panel_appearance';
 const APPEARANCE_CLASSES = ['appearance-light', 'appearance-transparent'];
 
 function applyAppearance(mode){
@@ -26,8 +25,8 @@ function applyAppearance(mode){
   });
 }
 
-export function initPanel(){
-  applyAppearance(readText(APPEARANCE_KEY) || 'dark');
+export async function initPanel(){
+  applyAppearance('dark');
 
   userBtn.addEventListener('click', () => {
     settingsPanel.classList.toggle('open');
@@ -53,7 +52,13 @@ export function initPanel(){
     const btn = e.target.closest('.appearance-swatch');
     if(!btn) return;
     const mode = btn.dataset.appearance;
-    writeText(APPEARANCE_KEY, mode);
+    repo.saveAppearance(mode);
     applyAppearance(mode);
   });
+
+  try {
+    applyAppearance((await repo.getAppearance()) || 'dark');
+  } catch(e) {
+    console.error('Could not load appearance', e);
+  }
 }

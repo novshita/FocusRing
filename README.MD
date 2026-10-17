@@ -27,10 +27,32 @@ No build step, no dependencies, no npm install.
 
 ```
 focusring/
-├── index.html   # markup
-├── style.css    # styling and theme
-└── script.js    # timer logic
+├── index.html          # markup
+├── style.css           # styling and themes
+├── js/
+│   ├── main.js         # starts each feature
+│   ├── timer.js        # countdown and session cycle
+│   ├── journey.js      # stats, heatmap, growth rings, badges (rendering)
+│   ├── profile.js      # name, bio, photo
+│   ├── themes.js       # wallpapers and appearance
+│   ├── sharecard.js    # exports the growth rings as an image
+│   ├── stats.js        # pure logic: streaks, totals, ring geometry
+│   ├── badges.js       # achievement rules
+│   ├── localRepo.js    # async data layer (localStorage)
+│   └── repo.js         # picks which data layer the app uses
+├── tests/              # unit tests
+└── package.json        # only used to run the tests
 ```
+
+The UI never touches storage directly. It goes through `repo.js`, so the data layer can be swapped for a hosted backend without changing the UI.
+
+## Tests
+
+```
+npm test
+```
+
+Uses Node's built-in test runner, so there is nothing to install. The tests cover the streak and ring logic (including daylight-saving edge cases), the badge rules, and the data layer, including reading data saved by earlier versions and behaving when storage is full or blocked. They run in CI on every push and pull request.
 
 ## Roadmap / ideas
 

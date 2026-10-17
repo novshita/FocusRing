@@ -1,5 +1,5 @@
 import { MODE, formatTime } from './util.js';
-import { readSettings, patchSettings } from './storage.js';
+import { repo } from './repo.js';
 import { recordSession } from './journey.js';
 import { playChime, notifySessionEnd } from './alerts.js';
 import { renderDate } from './dateline.js';
@@ -54,7 +54,7 @@ function durationFor(m){
 }
 
 function save(){
-  patchSettings({
+  repo.patchSettings({
     workMins: workInput.value,
     breakMins: breakInput.value,
     longMins: longInput.value
@@ -184,8 +184,10 @@ export function resync(){
   if(running) tick();
 }
 
-export function initTimer(){
-  const saved = readSettings();
+export async function initTimer(){
+  let saved = {};
+  try { saved = await repo.getSettings(); }
+  catch(e) { console.error('Could not load settings', e); }
   restoreMinutes(workInput, saved.workMins);
   restoreMinutes(breakInput, saved.breakMins);
   restoreMinutes(longInput, saved.longMins);

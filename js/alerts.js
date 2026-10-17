@@ -1,5 +1,5 @@
 import { MODE } from './util.js';
-import { readSettings, patchSettings } from './storage.js';
+import { repo } from './repo.js';
 
 const soundToggle = document.getElementById('soundToggle');
 const notifyToggle = document.getElementById('notifyToggle');
@@ -53,11 +53,13 @@ function renderToggles(){
 }
 
 function save(){
-  patchSettings({ soundEnabled: soundEnabled, notifyEnabled: notifyEnabled });
+  repo.patchSettings({ soundEnabled: soundEnabled, notifyEnabled: notifyEnabled });
 }
 
-export function initAlerts(){
-  const saved = readSettings();
+export async function initAlerts(){
+  let saved = {};
+  try { saved = await repo.getSettings(); }
+  catch(e) { console.error('Could not load settings', e); }
   soundEnabled = saved.soundEnabled !== false;
   notifyEnabled = saved.notifyEnabled === true && canNotify() && Notification.permission === 'granted';
   renderToggles();

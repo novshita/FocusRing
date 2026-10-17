@@ -1,4 +1,4 @@
-import { readSettings, patchSettings } from './storage.js';
+import { repo } from './repo.js';
 
 const bgLayer = document.getElementById('bgLayer');
 const bgVideo = document.getElementById('bgVideo');
@@ -57,7 +57,7 @@ function imageUrl(catIdx, imgIdx){
 }
 
 function save(){
-  patchSettings({
+  repo.patchSettings({
     catId: CATEGORIES[activeCatIdx].id,
     imgIdx: activeImgIdx,
     rotateSecs: rotInterval.value,
@@ -185,8 +185,10 @@ function stopAutoRotate(){
   if(rotateTimerId){ clearInterval(rotateTimerId); rotateTimerId = null; }
 }
 
-export function initThemes(){
-  const saved = readSettings();
+export async function initThemes(){
+  let saved = {};
+  try { saved = await repo.getSettings(); }
+  catch(e) { console.error('Could not load settings', e); }
   restoreRotateSecs(saved.rotateSecs);
   activeCatIdx = resolveCatIdx(saved);
   activeImgIdx = validImgIdx(activeCatIdx, saved.imgIdx);
