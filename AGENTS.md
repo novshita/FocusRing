@@ -12,7 +12,11 @@ npx serve .        # any static server works
 # VS Code "Live Server" extension recommended for development
 ```
 
-There is no test suite, linter, or formatter configured.
+```bash
+npm test           # unit tests, Node's built-in runner -- nothing to install
+```
+
+There is no linter or formatter configured. `package.json` exists only to run the tests; the app itself has no dependencies.
 
 ## Architecture
 
@@ -56,3 +60,18 @@ Duration inputs (`#workInput`, `#breakInput`, `#longInput`) are only enabled whe
 - Duration inputs only update `totalSeconds`/`remaining` when the changed input matches the current mode. Editing the break duration while in work mode has no immediate effect
 - The seed dots (`.seed`) always show exactly 4 elements. They fill based on `cycleIndex`, not `completedWork`
 - `playChime()` creates a new AudioContext on every call. Browsers may limit concurrent contexts
+
+## Data layer and tests
+
+The app is split into three layers; keep new code in the right one:
+
+- **`js/stats.js`, `js/badges.js`, `js/util.js`** -- pure logic (streaks, totals, ring geometry, badge rules). No DOM, no storage, and anything time-dependent takes a `now` argument. This is what the tests cover.
+- **`js/localRepo.js`** -- the async data interface (`getProfile`, `saveProfile`, `getSettings`, `patchSettings`, `getAppearance`, `saveAppearance`, `getJourney`, `recordSession`), built on `localStorage`. **`js/repo.js`** is the single place that picks the implementation, so a hosted backend replaces one line there.
+- **UI modules** (`timer`, `journey`, `profile`, `panel`, `themes`, `alerts`, `sharecard`) -- only ever import `repo`; they never touch `localStorage` directly.
+
+Gotchas:
+
+- Every repo method is async and resolves to plain data. UI `init*` functions are async too and are started together from `main.js` with `Promise.allSettled`, so one failing doesn't stop the rest.
+- The `focusring_*` storage keys are kept exactly as they were before the repo existed, so saved profiles, history and settings carry over. `tests/localRepo.test.js` has tests that preload those legacy keys -- keep them passing.
+- Tests live in `tests/*.test.js`. `tests/memoryStore.js` is a helper, not a test (the runner only picks up `*.test.js`). `tests/stats.test.js` sets `TZ=America/New_York` so the daylight-saving cases mean something wherever they run.
+- The DOM modules aren't unit-tested; check UI changes in a browser.

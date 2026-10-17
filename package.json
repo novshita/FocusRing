@@ -1,0 +1,9 @@
+{
+  "name": "focusring",
+  "private": true,
+  "type": "module",
+  "description": "A Pomodoro-style focus timer. No dependencies; package.json exists only to run the tests.",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\""
+  }
+}

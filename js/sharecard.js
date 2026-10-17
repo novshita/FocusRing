@@ -1,6 +1,5 @@
 import { dayKey, formatDuration } from './util.js';
-import { readText } from './storage.js';
-import { NAME_KEY, AVATAR_KEY } from './profile.js';
+import { repo } from './repo.js';
 
 const CARD_W = 1080;
 const CARD_H = 1350;
@@ -73,8 +72,9 @@ async function drawCard({ rings, size, stats }){
   ctx.fillRect(0, 0, CARD_W, CARD_H);
   ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  const name = readText(NAME_KEY) || 'Guest';
-  const avatar = await loadImage(readText(AVATAR_KEY));
+  const profile = await repo.getProfile();
+  const name = profile.name || 'Guest';
+  const avatar = await loadImage(profile.avatar);
   const avatarSize = 96;
   const avatarCx = PAD + avatarSize / 2;
   const avatarCy = PAD + avatarSize / 2;

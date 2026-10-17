@@ -1,4 +1,4 @@
-import { readText, writeText, removeKey } from './storage.js';
+import { repo } from './repo.js';
 
 const settingsPanel = document.getElementById('settingsPanel');
 const userBtnIcon = document.getElementById('userBtnIcon');
@@ -19,13 +19,11 @@ const profileNameInput = document.getElementById('profileNameInput');
 const profileBioInput = document.getElementById('profileBioInput');
 const bioSaveBtn = document.getElementById('bioSaveBtn');
 
-export const NAME_KEY = 'focusring_profile_name';
-export const AVATAR_KEY = 'focusring_profile_avatar';
-const BIO_KEY = 'focusring_profile_bio';
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const AVATAR_MAX_PX = 256;
 
 function setAvatarImage(dataUrl){
+  currentAvatar = dataUrl || '';
   const hasAvatar = !!dataUrl;
   userBtnImg.src = dataUrl || '';
   userBtnImg.hidden = !hasAvatar;
@@ -64,10 +62,12 @@ function closeAvatarMenu(){
   avatarBtn.setAttribute('aria-expanded', 'false');
 }
 
+// The avatar currently on screen, kept so the photo viewer doesn't re-read it.
+let currentAvatar = '';
+
 function openPhotoViewer(){
-  const dataUrl = readText(AVATAR_KEY);
-  if(!dataUrl) return;
-  photoViewerImg.src = dataUrl;
+  if(!currentAvatar) return;
+  photoViewerImg.src = currentAvatar;
   photoViewer.hidden = false;
 }
 
@@ -77,17 +77,27 @@ function closePhotoViewer(){
 }
 
 function saveBio(){
-  const bio = profileBioInput.value.trim();
-  if(bio){ writeText(BIO_KEY, bio); }
-  else { removeKey(BIO_KEY); }
+  return repo.saveProfile({ bio: profileBioInput.value.trim() });
 }
 
-export function initProfile(){
-  const name = readText(NAME_KEY);
-  profileNameInput.value = name;
-  userBtnName.textContent = name || 'Guest';
-  profileBioInput.value = readText(BIO_KEY);
-  setAvatarImage(readText(AVATAR_KEY));
+export async function initProfile(){
+  // Listeners are attached before the profile loads, so a slow backend can't
+  // leave the avatar menu dead; the fields just fill in when the data arrives.
+  attachProfileHandlers();
+
+  let profile = { name: '', bio: '', avatar: '' };
+  try {
+    profile = await repo.getProfile();
+  } catch(e) {
+    console.error('Could not load profile', e);
+  }
+  profileNameInput.value = profile.name;
+  userBtnName.textContent = profile.name || 'Guest';
+  profileBioInput.value = profile.bio;
+  setAvatarImage(profile.avatar);
+}
+
+function attachProfileHandlers(){
 
   avatarBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -136,12 +146,12 @@ export function initProfile(){
     }
     const reader = new FileReader();
     reader.onload = () => {
-      shrinkAvatar(reader.result, small => {
+      shrinkAvatar(reader.result, async small => {
         if(!small){
           alert("That image couldn't be read. Try a different file.");
           return;
         }
-        if(!writeText(AVATAR_KEY, small)){
+        if(!(await repo.saveProfile({ avatar: small }))){
           alert("Couldn't save your photo — browser storage is full. Remove the photo and try again.");
           return;
         }
@@ -153,7 +163,7 @@ export function initProfile(){
 
   avatarRemoveOption.addEventListener('click', () => {
     closeAvatarMenu();
-    removeKey(AVATAR_KEY);
+    repo.saveProfile({ avatar: '' });
     setAvatarImage('');
   });
 
@@ -162,9 +172,7 @@ export function initProfile(){
   });
 
   profileNameInput.addEventListener('change', () => {
-    const value = profileNameInput.value.trim();
-    if(value){ writeText(NAME_KEY, value); }
-    else { removeKey(NAME_KEY); }
+    repo.saveProfile({ name: profileNameInput.value.trim() });
   });
 
   profileBioInput.addEventListener('change', saveBio);
