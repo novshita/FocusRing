@@ -19,8 +19,8 @@ const profileNameInput = document.getElementById('profileNameInput');
 const profileBioInput = document.getElementById('profileBioInput');
 const bioSaveBtn = document.getElementById('bioSaveBtn');
 
-const NAME_KEY = 'focusring_profile_name';
-const AVATAR_KEY = 'focusring_profile_avatar';
+export const NAME_KEY = 'focusring_profile_name';
+export const AVATAR_KEY = 'focusring_profile_avatar';
 const BIO_KEY = 'focusring_profile_bio';
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const AVATAR_MAX_PX = 256;
