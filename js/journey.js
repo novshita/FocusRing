@@ -1,5 +1,6 @@
 import { dayKey, formatDuration } from './util.js';
 import { readJSON, writeJSON } from './storage.js';
+import { downloadShareCard } from './sharecard.js';
 
 const HISTORY_KEY = 'focusring_history';
 const BADGE_FLAGS_KEY = 'focusring_badge_flags';
@@ -202,7 +203,7 @@ export function renderJourney(){
   });
   journeyBody.appendChild(chart);
   renderHeatmap(history);
-  renderGarden(history);
+  renderGarden(history, stats);
   renderBadges(stats);
 }
 
@@ -316,18 +317,41 @@ function svgEl(name, attrs){
   return el;
 }
 
-// A cross-section of the last 30 days, like a tree trunk: the oldest day is the
-// innermost ring and today is the outermost. Thicker, brighter rings mean more
-// focus; a day with no focus is a faint hairline -- a thin year in the wood.
-function renderGarden(history){
-  const days = [];
-  for(let i = GARDEN_DAYS - 1; i >= 0; i--){
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const rec = history[dayKey(d)];
-    days.push({ date: d, minutes: rec ? rec.m : 0, sessions: rec ? rec.n : 0 });
+// Geometry for the last 30 days as concentric rings in a 220-unit square: the
+// oldest day is the innermost ring and today is the outermost. Thicker, more
+// opaque rings mean more focus; a day with no focus is a faint hairline. Shared
+// by the on-screen SVG and the exported share card so they always match.
+function gardenRings(history){
+  const c = GARDEN_SIZE / 2;
+  const step = (GARDEN_MAX_R - GARDEN_MIN_R) / (GARDEN_DAYS - 1);
+  const rings = [];
+  for(let i = 0; i < GARDEN_DAYS; i++){
+    const date = new Date();
+    date.setDate(date.getDate() - (GARDEN_DAYS - 1 - i));
+    const rec = history[dayKey(date)];
+    const minutes = rec ? rec.m : 0;
+    const strength = Math.min(minutes / 120, 1);
+    // Wood is never perfectly round, so each ring drifts a little off-centre.
+    const wobble = Math.sin(i * 1.7) * 0.9;
+    rings.push({
+      date: date,
+      minutes: minutes,
+      sessions: rec ? rec.n : 0,
+      grown: minutes > 0,
+      isToday: i === GARDEN_DAYS - 1,
+      r: GARDEN_MIN_R + step * i,
+      cx: c + wobble,
+      cy: c - wobble * 0.6,
+      width: minutes > 0 ? 0.9 + strength * 1.6 : 0.5,
+      opacity: minutes > 0 ? 0.55 + strength * 0.45 : 0.35
+    });
   }
-  const grown = days.filter(d => d.minutes > 0).length;
+  return rings;
+}
+
+function renderGarden(history, stats){
+  const rings = gardenRings(history);
+  const grown = rings.filter(r => r.grown).length;
 
   const head = document.createElement('div');
   head.className = 'chart-head garden-head';
@@ -348,35 +372,27 @@ function renderGarden(history){
     'aria-label': 'Growth rings for your last ' + GARDEN_DAYS + ' days. ' +
       grown + ' of them have a focus session.'
   });
-  const c = GARDEN_SIZE / 2;
-  const step = (GARDEN_MAX_R - GARDEN_MIN_R) / (GARDEN_DAYS - 1);
+  svg.appendChild(svgEl('circle', { 'class': 'garden-core', cx: GARDEN_SIZE / 2, cy: GARDEN_SIZE / 2, r: 4 }));
 
-  svg.appendChild(svgEl('circle', { 'class': 'garden-core', cx: c, cy: c, r: 4 }));
-
-  days.forEach((day, i) => {
-    const r = GARDEN_MIN_R + step * i;
-    const isToday = i === GARDEN_DAYS - 1;
-    // Wood is never perfectly round, so each ring drifts a little off-centre.
-    const wobble = Math.sin(i * 1.7) * 0.9;
-    const strength = Math.min(day.minutes / 120, 1);
-    const ring = svgEl('circle', {
-      'class': 'garden-ring' + (day.minutes > 0 ? ' garden-grown' : '') + (isToday ? ' garden-today' : ''),
-      cx: c + wobble,
-      cy: c - wobble * 0.6,
-      r: r,
-      'stroke-width': day.minutes > 0 ? (0.9 + strength * 1.6).toFixed(2) : 0.5,
-      'stroke-opacity': day.minutes > 0 ? (0.55 + strength * 0.45).toFixed(2) : 0.35
+  rings.forEach(ring => {
+    const el = svgEl('circle', {
+      'class': 'garden-ring' + (ring.grown ? ' garden-grown' : '') + (ring.isToday ? ' garden-today' : ''),
+      cx: ring.cx,
+      cy: ring.cy,
+      r: ring.r,
+      'stroke-width': ring.width.toFixed(2),
+      'stroke-opacity': ring.opacity.toFixed(2)
     });
-    if(isToday && day.minutes > 0){
-      ring.style.setProperty('--ring-len', (2 * Math.PI * r).toFixed(1));
+    if(ring.isToday && ring.grown){
+      el.style.setProperty('--ring-len', (2 * Math.PI * ring.r).toFixed(1));
     }
     const title = svgEl('title', {});
-    title.textContent = day.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-      (day.minutes > 0
-        ? ' · ' + formatDuration(day.minutes) + ' · ' + day.sessions + (day.sessions === 1 ? ' session' : ' sessions')
+    title.textContent = ring.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+      (ring.grown
+        ? ' · ' + formatDuration(ring.minutes) + ' · ' + ring.sessions + (ring.sessions === 1 ? ' session' : ' sessions')
         : ' · no focus');
-    ring.appendChild(title);
-    svg.appendChild(ring);
+    el.appendChild(title);
+    svg.appendChild(el);
   });
 
   journeyBody.appendChild(svg);
@@ -385,6 +401,22 @@ function renderGarden(history){
   note.className = 'garden-note';
   note.textContent = 'Each ring is a day, oldest in the middle, today on the outside. Thicker means more focus.';
   journeyBody.appendChild(note);
+
+  const shareBtn = document.createElement('button');
+  shareBtn.type = 'button';
+  shareBtn.className = 'share-btn';
+  shareBtn.textContent = 'Save as image';
+  shareBtn.addEventListener('click', () => {
+    shareBtn.disabled = true;
+    downloadShareCard({ rings: rings, size: GARDEN_SIZE, stats: stats }).then(ok => {
+      shareBtn.textContent = ok ? 'Saved ✓' : "Couldn't create image";
+      setTimeout(() => {
+        shareBtn.textContent = 'Save as image';
+        shareBtn.disabled = false;
+      }, 2000);
+    });
+  });
+  journeyBody.appendChild(shareBtn);
 }
 
 function renderBadges(stats){
